@@ -1,0 +1,171 @@
+version: '3.8'
+
+services:
+  # Infrastructure
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - backend-net
+
+  # Service Backend
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8081:8081"
+    volumes:
+      - auth_data:/data
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - redis
+    networks:
+      - backend-net
+
+  menu-service:
+    build: ./menu-service
+    ports:
+      - "8082:8082"
+    volumes:
+      - menu_data:/data
+      - image_data:/data/images
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - AI_RECOMMENDATION_URL=http://ai-recommendation:8001
+    depends_on:
+      - redis
+    networks:
+      - backend-net
+
+  order-service:
+    build: ./order-service
+    ports:
+      - "8083:8083"
+    volumes:
+      - order_data:/data
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - MENU_SERVICE_URL=http://menu-service:8082
+      - GATEWAY_URL=http://gateway-service:8080
+    depends_on:
+      - menu-service
+    networks:
+      - backend-net
+
+  review-service:
+    build: ./review-service
+    ports:
+      - "8084:8084"
+    volumes:
+      - review_data:/data
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - ORDER_SERVICE_URL=http://order-service:8083
+      - AI_REVIEW_WRITER_URL=http://ai-review-writer:8002
+      - AI_RECOMMENDATION_URL=http://ai-recommendation:8001
+      - AI_VALIDATION_URL=http://ai-validation:8004
+    depends_on:
+      - order-service
+    networks:
+      - backend-net
+
+  gateway-service:
+    build: ./gateway-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - MENU_SERVICE_URL=http://menu-service:8082
+      - ORDER_SERVICE_URL=http://order-service:8083
+      - REVIEW_SERVICE_URL=http://review-service:8084
+    depends_on:
+      - auth-service
+      - menu-service
+      - order-service
+      - review-service
+    networks:
+      - backend-net
+      - frontend-net
+
+  # AI Backend
+  ai-recommendation:
+    build: ./ai-recommendation
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/data/chroma
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MENU_SERVICE_URL=http://menu-service:8082
+    networks:
+      - backend-net
+
+  ai-review-writer:
+    build: ./ai-review-writer
+    ports:
+      - "8002:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - backend-net
+
+  ai-operations:
+    build: ./ai-operations
+    ports:
+      - "8003:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ORDER_SERVICE_URL=http://order-service:8083
+      - MENU_SERVICE_URL=http://menu-service:8082
+    networks:
+      - backend-net
+
+  ai-validation:
+    build: ./ai-validation
+    ports:
+      - "8004:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - backend-net
+
+  # Frontend
+  customer-web:
+    build: ./customer-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - gateway-service
+    networks:
+      - frontend-net
+
+  admin-web:
+    build: ./admin-web
+    ports:
+      - "3001:80"
+    depends_on:
+      - gateway-service
+    networks:
+      - frontend-net
+
+networks:
+  frontend-net:
+    driver: bridge
+  backend-net:
+    driver: bridge
+
+volumes:
+  redis_data:
+  auth_data:
+  menu_data:
+  image_data:
+  order_data:
+  review_data:
+  chroma_data:

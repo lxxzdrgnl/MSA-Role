@@ -1,0 +1,28 @@
+# Java
+*.class
+*.jar
+build/
+.gradle/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Env
+.env
+
+# Data
+*.db
+data/
+chroma_data/
+
+# Node
+node_modules/
+dist/
