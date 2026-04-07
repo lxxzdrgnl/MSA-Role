@@ -4,4 +4,5 @@ openai
 chromadb
 sentence-transformers
 pydantic
+pydantic-settings
 httpx

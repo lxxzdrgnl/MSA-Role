@@ -53,13 +53,21 @@ const CONGESTION_LABELS = { LOW: '여유', MEDIUM: '보통', HIGH: '혼잡' }
 async function loadStats() {
   const today = new Date().toISOString().slice(0, 10)
   const [rev, active, cong, best] = await Promise.allSettled([
-    api.get(`/orders/revenue?date=${today}`),
-    api.get('/orders/active-count'),
+    api.get(`/orders/stats/revenue?period=daily&from=${today}&to=${today}`),
+    api.get('/orders/active'),
     api.get('/operations/congestion'),
-    api.get('/orders/best-sellers'),
+    api.get('/orders/stats/best-sellers?period=weekly&limit=10'),
   ])
-  if (rev.status === 'fulfilled') revenue.value = rev.value.data
-  if (active.status === 'fulfilled') activeCount.value = active.value.data.count
+  if (rev.status === 'fulfilled') {
+    const revData = rev.value.data
+    if (Array.isArray(revData) && revData.length > 0) {
+      revenue.value = revData[0]
+    }
+  }
+  if (active.status === 'fulfilled') {
+    const activeData = active.value.data
+    activeCount.value = Array.isArray(activeData) ? activeData.length : 0
+  }
   if (cong.status === 'fulfilled') congestion.value = cong.value.data
   if (best.status === 'fulfilled') bestSellers.value = best.value.data
 }

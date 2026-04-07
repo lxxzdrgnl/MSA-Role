@@ -17,14 +17,18 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// Response interceptor: handle 401
+// Response interceptor: handle 401 only for non-public endpoints
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userRole')
-      window.location.href = '/login'
+      const url = error.config?.url || ''
+      // Only force logout if a token was sent but rejected
+      if (localStorage.getItem('token') && !url.includes('/auth/')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userRole')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

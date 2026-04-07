@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 public class OrderStatusRequest {
 
     @NotBlank(message = "status is required")
-    @Pattern(regexp = "PENDING|COOKING|DONE", message = "status must be PENDING, COOKING, or DONE")
+    @Pattern(regexp = "PENDING|ACCEPTED|COOKING|READY|COMPLETED|CANCELLED", message = "Invalid status")
     private String status;
 
     public String getStatus() { return status; }

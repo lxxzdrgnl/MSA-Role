@@ -36,6 +36,19 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/all")
+    public ResponseEntity<PageResponse<OrderResponse>> getAllOrders(
+            @RequestHeader("X-User-Role") String role,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String status) {
+        if (!"ADMIN".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+        }
+        PageResponse<OrderResponse> response = orderService.getAllOrders(page, size, status);
+        return ResponseEntity.ok(response);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<OrderResponse> getOrderById(@PathVariable Long id) {
         OrderResponse response = orderService.getOrderById(id);

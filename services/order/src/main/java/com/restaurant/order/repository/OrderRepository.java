@@ -77,6 +77,32 @@ public class OrderRepository {
         return count != null ? count : 0;
     }
 
+    public List<Order> findAll(int offset, int limit) {
+        return jdbcTemplate.query(
+                "SELECT * FROM orders ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                ROW_MAPPER, limit, offset
+        );
+    }
+
+    public List<Order> findAllByStatus(String status, int offset, int limit) {
+        return jdbcTemplate.query(
+                "SELECT * FROM orders WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                ROW_MAPPER, status, limit, offset
+        );
+    }
+
+    public long countAll() {
+        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM orders", Long.class);
+        return count != null ? count : 0;
+    }
+
+    public long countByStatusTotal(String status) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM orders WHERE status = ?", Long.class, status
+        );
+        return count != null ? count : 0;
+    }
+
     public List<Order> findActiveOrders() {
         return jdbcTemplate.query(
                 "SELECT * FROM orders WHERE status IN ('PENDING', 'COOKING') ORDER BY created_at ASC",

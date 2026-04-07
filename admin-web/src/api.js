@@ -14,15 +14,18 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// Response interceptor: handle 401
+// Response interceptor: handle 401 only when token was sent but rejected
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
-      localStorage.removeItem('role')
-      window.location.href = '/login'
+      const url = error.config?.url || ''
+      if (localStorage.getItem('accessToken') && !url.includes('/auth/')) {
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+        localStorage.removeItem('role')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }
@@ -39,7 +42,7 @@ export const authVerify = () => {
 
 // ── Orders ───────────────────────────────────────────
 export const getOrders = (params) =>
-  api.get('/orders', { params })
+  api.get('/orders/all', { params })
 
 export const updateOrderStatus = (id, status) =>
   api.patch(`/orders/${id}/status`, { status })

@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Seed admin account (password: admin1234, BCrypt hash)
-INSERT OR IGNORE INTO users (email, password, nickname, role)
-VALUES ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', '관리자', 'ADMIN');
+INSERT OR REPLACE INTO users (email, password, nickname, role)
+VALUES ('admin', '$2b$10$TlNfzKEpFXOJpGmQlTdNnudD0VGeozISkbEwItjK7INlU6qgIC4Zu', '관리자', 'ADMIN');

@@ -124,6 +124,15 @@ public class ReviewService {
         return new PageResponse<>(content, page, totalPages, totalCount);
     }
 
+    public PageResponse<ReviewResponse> getReviewsByOrder(Long orderId, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Review> reviews = reviewRepository.findByOrderId(orderId, offset, size);
+        long totalCount = reviewRepository.countByOrderId(orderId);
+        List<ReviewResponse> content = reviews.stream().map(ReviewResponse::from).collect(Collectors.toList());
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        return new PageResponse<>(content, page, totalPages, totalCount);
+    }
+
     public ReviewResponse getReviewById(Long id) {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Review not found with id: " + id));

@@ -91,6 +91,27 @@ public class OrderService {
         return new PageResponse<>(responses, page, totalPages, totalCount);
     }
 
+    public PageResponse<OrderResponse> getAllOrders(int page, int size, String status) {
+        int offset = (page - 1) * size;
+        List<Order> orders;
+        long totalCount;
+
+        if (status != null && !status.isBlank()) {
+            orders = orderRepository.findAllByStatus(status, offset, size);
+            totalCount = orderRepository.countByStatusTotal(status);
+        } else {
+            orders = orderRepository.findAll(offset, size);
+            totalCount = orderRepository.countAll();
+        }
+
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        List<OrderResponse> responses = orders.stream()
+                .map(o -> toResponse(o, orderItemRepository.findByOrderId(o.getId())))
+                .collect(Collectors.toList());
+
+        return new PageResponse<>(responses, page, totalPages, totalCount);
+    }
+
     public OrderResponse getOrderById(Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + id));

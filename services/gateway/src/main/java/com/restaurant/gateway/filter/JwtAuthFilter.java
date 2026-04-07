@@ -10,6 +10,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.util.*;
 
@@ -17,6 +20,7 @@ import java.util.*;
 @Order(1)
 public class JwtAuthFilter implements Filter {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
     private final RestTemplate restTemplate;
     private final RouteConfig routeConfig;
 
@@ -31,6 +35,21 @@ public class JwtAuthFilter implements Filter {
         this.routeConfig = routeConfig;
     }
 
+    private boolean isPublicPath(String path, String method) {
+        // Auth endpoints
+        if (SKIP_AUTH_PATHS.contains(path)) return true;
+        // Non-API, WebSocket, Swagger
+        if (!path.startsWith("/api/") || path.startsWith("/ws/")
+                || path.contains("swagger") || path.contains("api-docs")
+                || path.startsWith("/internal/")) return true;
+        // GET on menus and categories — public read
+        if ("GET".equalsIgnoreCase(method)) {
+            if (path.startsWith("/api/menus")) return true;
+            if (path.startsWith("/api/operations/congestion")) return true;
+        }
+        return false;
+    }
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
@@ -38,11 +57,9 @@ public class JwtAuthFilter implements Filter {
         HttpServletRequest req = (HttpServletRequest) request;
         HttpServletResponse res = (HttpServletResponse) response;
         String path = req.getRequestURI();
+        String method = req.getMethod();
 
-        // Skip auth for public endpoints and non-API paths
-        if (SKIP_AUTH_PATHS.contains(path) || path.startsWith("/ws/")
-                || path.contains("swagger") || path.contains("api-docs")
-                || path.startsWith("/internal/")) {
+        if (isPublicPath(path, method)) {
             chain.doFilter(request, response);
             return;
         }
@@ -104,7 +121,10 @@ public class JwtAuthFilter implements Filter {
             };
 
             chain.doFilter(wrappedRequest, response);
+        } catch (jakarta.servlet.ServletException | IOException e) {
+            throw e; // Let downstream errors propagate normally
         } catch (Exception e) {
+            log.error("Token verification failed for path {}: {}", path, e.getMessage());
             res.setStatus(401);
             res.setContentType("application/json");
             res.getWriter().write("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Token verification failed\"}");

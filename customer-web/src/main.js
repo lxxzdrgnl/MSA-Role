@@ -10,7 +10,7 @@ async function bootstrap() {
   if (token) {
     try {
       // Verify token validity
-      const res = await api.get('/auth/verify')
+      const res = await api.post('/auth/verify', { token })
       const role = res.data?.role || localStorage.getItem('userRole')
       localStorage.setItem('userRole', role)
 

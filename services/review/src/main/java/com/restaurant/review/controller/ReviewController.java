@@ -1,0 +1,71 @@
+package com.restaurant.review.controller;
+
+import com.restaurant.review.dto.*;
+import com.restaurant.review.service.ReviewService;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/reviews")
+public class ReviewController {
+
+    private final ReviewService reviewService;
+
+    public ReviewController(ReviewService reviewService) {
+        this.reviewService = reviewService;
+    }
+
+    @PostMapping
+    public ResponseEntity<ReviewResponse> createReview(
+            @RequestHeader("X-User-Id") Long userId,
+            @Valid @RequestBody ReviewCreateRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(reviewService.createReview(userId, request));
+    }
+
+    @GetMapping
+    public ResponseEntity<PageResponse<ReviewResponse>> getReviews(
+            @RequestParam(required = false) Long menuId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reviewService.getReviews(menuId, page, size));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ReviewResponse> getReview(@PathVariable Long id) {
+        return ResponseEntity.ok(reviewService.getReviewById(id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReview(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestHeader("X-User-Role") String role) {
+        reviewService.deleteReview(id, userId, role);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<ReviewSummaryResponse> getSummary(
+            @RequestParam(required = false) Long menuId) {
+        if (menuId != null) {
+            return ResponseEntity.ok(reviewService.getMenuSummary(menuId));
+        }
+        return ResponseEntity.ok(reviewService.getSummary());
+    }
+
+    @GetMapping("/by-order")
+    public ResponseEntity<PageResponse<ReviewResponse>> getByOrder(
+            @RequestParam Long orderId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reviewService.getReviewsByOrder(orderId, page, size));
+    }
+
+    @PostMapping("/generate")
+    public ResponseEntity<AiGenerateResponse> generateReview(
+            @Valid @RequestBody AiGenerateRequest request) {
+        return ResponseEntity.ok(reviewService.generateAiReview(request));
+    }
+}
