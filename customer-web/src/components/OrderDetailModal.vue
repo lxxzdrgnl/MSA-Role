@@ -33,16 +33,44 @@
           </div>
         </div>
 
-        <!-- Review (COMPLETED/READY) -->
+        <!-- Review section -->
         <div v-if="order.status!=='CANCELLED'" class="rv-section">
-          <div v-if="rvDone" class="rv-done"><span class="rv-done-ico">✓</span> 리뷰가 등록되었습니다</div>
-          <template v-else>
-            <div class="rv-title">리뷰 작성</div>
+          <!-- Existing review (read mode) -->
+          <template v-if="existingReview && !editing">
+            <div class="rv-title">내 리뷰</div>
+            <div class="rv-existing">
+              <div class="rv-ex-top">
+                <span class="rv-ex-stars">{{ '★'.repeat(existingReview.rating) }}{{ '☆'.repeat(5 - existingReview.rating) }}</span>
+                <span class="rv-ex-date">{{ fmtDate(existingReview.createdAt) }}</span>
+              </div>
+              <p class="rv-ex-content">{{ existingReview.content }}</p>
+              <div class="rv-ex-actions">
+                <button class="rv-act-btn" @click="startEdit">수정</button>
+                <button class="rv-act-btn rv-act-del" @click="deleteRv">삭제</button>
+              </div>
+            </div>
+          </template>
+
+          <!-- Write / Edit mode -->
+          <template v-else-if="!existingReview || editing">
+            <div class="rv-title">{{ editing ? '리뷰 수정' : '리뷰 작성' }}</div>
             <div class="star-row"><button v-for="n in 5" :key="n" class="star" :class="{on:rvRating>=n}" @click="rvRating=n">★</button></div>
-            <div class="kw-row"><button v-for="k in KW" :key="k" class="kw" :class="{sel:rvKws.includes(k)}" @click="togKw(k)">{{ k }}</button></div>
+            <div class="kw-row">
+              <button v-for="k in KW" :key="k" class="kw" :class="{sel:rvKws.includes(k)}" @click="togKw(k)">{{ k }}</button>
+            </div>
+            <div class="kw-custom">
+              <div v-for="k in customKws" :key="k" class="kw sel">{{ k }} <span class="kw-x" @click="removeCustom(k)">×</span></div>
+              <form class="kw-input-form" @submit.prevent="addCustomKw">
+                <input v-model="customKw" class="kw-input" placeholder="직접 입력..." />
+                <button type="submit" class="kw-add-btn">+</button>
+              </form>
+            </div>
             <button class="btn-draft" :disabled="draftL||rvRating===0" @click="genDraft"><span v-if="draftL" class="spinner"></span>{{ draftL?'AI 작성 중...':'✦ AI 리뷰 초안' }}</button>
             <textarea v-model="rvText" class="rv-ta" rows="3" placeholder="리뷰를 작성하세요..."></textarea>
-            <button class="btn-rv-submit" :disabled="!rvText.trim()||rvSubmitting" @click="submitRv">{{ rvSubmitting?'등록 중...':'리뷰 등록' }}</button>
+            <div class="rv-btn-row">
+              <button v-if="editing" class="rv-act-btn" @click="editing=false">취소</button>
+              <button class="btn-rv-submit" :disabled="!rvText.trim()||rvSubmitting" @click="submitRv">{{ rvSubmitting ? '등록 중...' : editing ? '수정 완료' : '리뷰 등록' }}</button>
+            </div>
           </template>
         </div>
 
@@ -75,27 +103,86 @@ const fmtPrice = p => Number(p).toLocaleString('ko-KR')
 const fmtDate = s => s ? new Date(s).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''
 
 // Review
-const rvRating = ref(0), rvText = ref(''), rvKws = ref([]), draftL = ref(false), rvSubmitting = ref(false), rvDone = ref(false)
+const existingReview = ref(null)
+const existingReviews = ref([])
+const editing = ref(false)
+const rvRating = ref(0), rvText = ref(''), rvKws = ref([]), draftL = ref(false), rvSubmitting = ref(false)
 const KW = ['맛있다','양이 많다','빠르다','국물이 좋다','매콤하다','신선하다','가성비 좋다']
+const customKw = ref('')
+const customKws = ref([])
+function addCustomKw() {
+  const v = customKw.value.trim()
+  if (v && !rvKws.value.includes(v) && !customKws.value.includes(v)) { customKws.value.push(v); rvKws.value.push(v) }
+  customKw.value = ''
+}
+function removeCustom(k) { customKws.value = customKws.value.filter(x=>x!==k); rvKws.value = rvKws.value.filter(x=>x!==k) }
 function togKw(k) { const i=rvKws.value.indexOf(k); i>=0?rvKws.value.splice(i,1):rvKws.value.push(k) }
 
 async function genDraft() {
   draftL.value = true
   try {
     const name = order.value.items?.map(i=>i.menuName).join(', ')||''
-    const r = await api.post('/reviews/generate',{menu_name:name,rating:rvRating.value,keywords:rvKws.value})
+    const r = await api.post('/reviews/generate',{menuName:name,rating:rvRating.value,keywords:rvKws.value})
     rvText.value = r.data.draft||r.data.review||''
   } catch {} finally { draftL.value = false }
+}
+
+function startEdit() {
+  rvRating.value = existingReview.value.rating
+  rvText.value = existingReview.value.content
+  editing.value = true
+}
+
+async function deleteRv() {
+  if (!confirm('리뷰를 삭제하시겠습니까?')) return
+  try {
+    for (const rv of existingReviews.value) {
+      await api.delete(`/reviews/${rv.id}`)
+    }
+    existingReview.value = null
+    existingReviews.value = []
+  } catch {}
 }
 
 async function submitRv() {
   if(!rvText.value.trim()) return
   rvSubmitting.value = true
-  try { await api.post('/reviews',{orderId:order.value.id,rating:rvRating.value,content:rvText.value}); rvDone.value=true } catch {} finally { rvSubmitting.value=false }
+  try {
+    if (editing.value && existingReview.value) {
+      // Delete all existing reviews for this order
+      for (const rv of existingReviews.value) {
+        try { await api.delete(`/reviews/${rv.id}`) } catch {}
+      }
+    }
+    // Register review for each menu item in the order
+    let lastRes = null
+    for (const item of (order.value.items || [])) {
+      lastRes = await api.post('/reviews', {
+        orderId: order.value.id,
+        menuId: item.menuId || item.id,
+        menuName: item.menuName || item.name || '',
+        rating: rvRating.value,
+        content: rvText.value
+      })
+    }
+    if (lastRes) existingReview.value = lastRes.data
+    await loadExistingReview()
+    editing.value = false
+  } catch {} finally { rvSubmitting.value=false }
+}
+
+async function loadExistingReview() {
+  try {
+    const r = await api.get('/reviews/by-order', { params: { orderId: props.orderId } })
+    const reviews = r.data.content || []
+    existingReviews.value = reviews
+    if (reviews.length > 0) existingReview.value = reviews[0]
+  } catch {}
 }
 
 onMounted(async () => {
   try { order.value = (await api.get(`/orders/${props.orderId}`)).data } catch {} finally { loading.value = false }
+  loadExistingReview()
   const proto = location.protocol==='https:'?'wss':'ws'
   ws = new WebSocket(`${proto}://${location.host}/ws/orders/${props.orderId}`)
   ws.onmessage = e => { try { const d=JSON.parse(e.data); if(d.status){order.value.status=d.status; wsMsg.value=ST[d.status]?.label||d.status; setTimeout(()=>{wsMsg.value=''},5000)} } catch{} }
@@ -149,6 +236,15 @@ onUnmounted(() => { if(ws) ws.close() })
 .kw-row { display:flex; flex-wrap:wrap; gap:5px; }
 .kw { background:var(--bg-subtle); border:1px solid var(--border); border-radius:99px; padding:4px 10px; font-size:11px; color:var(--text-secondary); font-family:inherit; cursor:pointer; transition:var(--transition); }
 .kw.sel { background:var(--accent-bg); border-color:var(--accent); color:var(--accent-soft); }
+.kw-custom { display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+.kw-custom .kw { display:flex; align-items:center; gap:4px; }
+.kw-x { cursor:pointer; font-size:12px; opacity:.6; }
+.kw-x:hover { opacity:1; }
+.kw-input-form { display:flex; gap:4px; align-items:center; }
+.kw-input { width:100px; padding:4px 10px; background:var(--bg-subtle); border:1px dashed var(--border); border-radius:99px; font-size:11px; color:var(--text-primary); font-family:inherit; outline:none; transition:var(--transition); }
+.kw-input:focus { border-color:var(--accent); width:130px; }
+.kw-input::placeholder { color:var(--text-muted); }
+.kw-add-btn { width:24px; height:24px; border-radius:99px; background:var(--accent); border:none; color:#fff; font-size:14px; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
 .btn-draft { background:var(--bg-elevated); border:1px dashed var(--accent); color:var(--accent-soft); padding:8px 14px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; font-family:inherit; cursor:pointer; transition:var(--transition); display:flex; align-items:center; justify-content:center; gap:6px; }
 .btn-draft:disabled { opacity:.4; cursor:not-allowed; }
 .rv-ta { width:100%; padding:8px 12px; background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); color:var(--text-primary); font-family:inherit; font-size:12px; resize:vertical; min-height:60px; outline:none; }
@@ -156,6 +252,20 @@ onUnmounted(() => { if(ws) ws.close() })
 .btn-rv-submit { background:var(--accent); color:#fff; border:none; border-radius:var(--radius-sm); padding:10px; font-size:13px; font-weight:700; font-family:inherit; cursor:pointer; transition:var(--transition); }
 .btn-rv-submit:hover:not(:disabled) { background:var(--accent-soft); }
 .btn-rv-submit:disabled { opacity:.4; cursor:not-allowed; }
+.rv-existing { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 14px; }
+.rv-ex-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.rv-ex-stars { font-size:14px; color:#fbbf24; letter-spacing:1px; }
+.rv-ex-date { font-size:11px; color:var(--text-muted); }
+.rv-ex-content { font-size:13px; color:var(--text-secondary); line-height:1.5; margin-bottom:10px; }
+.rv-ex-actions { display:flex; gap:8px; }
+.rv-act-btn { background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--radius-sm); padding:5px 12px; font-size:11px; color:var(--text-secondary); font-family:inherit; cursor:pointer; transition:var(--transition); }
+.rv-act-btn:hover { border-color:var(--border-hover); color:var(--text-primary); }
+.rv-act-del { color:#f87171; }
+.rv-act-del:hover { border-color:#f87171; background:rgba(248,113,113,.08); }
+.rv-btn-row { display:flex; gap:8px; justify-content:flex-end; }
+.rv-btn-row .rv-act-btn { flex:0; }
+.rv-btn-row .btn-rv-submit { flex:1; }
+
 .rv-done { display:flex; align-items:center; gap:8px; color:#4ade80; font-weight:600; font-size:13px; }
 .rv-done-ico { width:24px; height:24px; background:rgba(74,222,128,.12); border-radius:99px; display:flex; align-items:center; justify-content:center; font-size:12px; }
 

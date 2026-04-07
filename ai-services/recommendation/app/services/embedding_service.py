@@ -23,6 +23,7 @@ embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL)
 def _build_embedding_text(menu: EmbeddingSyncRequest) -> str:
     """Build text representation of a menu item for embedding."""
     parts = [
+        menu.category or "",
         menu.name,
         menu.description or "",
         menu.tags or "",

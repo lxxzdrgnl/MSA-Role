@@ -190,10 +190,13 @@ public class MenuService {
 
     private void syncEmbedding(Menu menu) {
         try {
+            String categoryName = categoryRepository.findById(menu.getCategoryId())
+                .map(Category::getName).orElse("");
             String url = aiRecommendationUrl + "/embeddings/sync";
             restTemplate.postForEntity(url, Map.of(
                 "menu_id", menu.getId(),
                 "name", menu.getName(),
+                "category", categoryName,
                 "description", menu.getDescription() != null ? menu.getDescription() : "",
                 "price", menu.getPrice(),
                 "tags", menu.getTags() != null ? menu.getTags() : "",

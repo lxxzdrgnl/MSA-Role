@@ -74,7 +74,7 @@
 
       <!-- Grid -->
       <div v-else-if="menus.length > 0" class="menu-grid">
-        <div v-for="(menu, i) in menus" :key="menu.id" class="menu-card fade-up" :class="{ 'sold-out': menu.isSoldOut }" :style="`animation-delay:${i * 0.03}s`">
+        <div v-for="(menu, i) in menus" :key="menu.id" class="menu-card fade-up" :class="{ 'sold-out': menu.isSoldOut }" :style="`animation-delay:${i * 0.03}s`" @click="openMenuDetail(menu)">
           <div class="card-visual">
             <img v-if="menu.imageUrl" :src="menu.imageUrl" :alt="menu.name" class="card-img" @error="e => e.target.style.display='none'" />
             <div v-else class="card-img-empty"><span>{{ categoryEmoji(menu.categoryName) }}</span></div>
@@ -92,7 +92,7 @@
             <div v-if="menu.tags" class="card-tags"><span v-for="tag in menu.tags.split(',')" :key="tag" class="chip">{{ tag.trim() }}</span></div>
             <div class="card-bottom">
               <span class="card-price mono">{{ formatPrice(menu.price) }}<small>원</small></span>
-              <button class="btn-cart" :disabled="menu.isSoldOut" @click="addToCart(menu)">{{ menu.isSoldOut ? '품절' : '담기' }}</button>
+              <button class="btn-cart" :disabled="menu.isSoldOut" @click.stop="addToCart(menu)">{{ menu.isSoldOut ? '품절' : '담기' }}</button>
             </div>
           </div>
         </div>
@@ -105,6 +105,11 @@
     <!-- Order Detail Modal -->
     <transition name="modal-fade">
       <OrderDetailModal v-if="selectedOrderId" :orderId="selectedOrderId" @close="selectedOrderId = null" />
+    </transition>
+
+    <!-- Menu Detail Modal -->
+    <transition name="modal-fade">
+      <MenuDetailModal v-if="selectedMenu" :menu="selectedMenu" @close="selectedMenu = null" @add-to-cart="(m) => { addToCart(m); selectedMenu = null }" />
     </transition>
 
     <!-- ═══ RIGHT: AI Chat Panel ═══ -->
@@ -133,10 +138,14 @@
               <template v-if="msg.menus">
                 <div class="msg-text">{{ msg.text }}</div>
                 <div class="rec-cards-inline">
-                  <div v-for="m in msg.menus" :key="m.id" class="rec-inline">
-                    <span class="rec-inline-name">{{ m.name }}</span>
-                    <span class="rec-inline-price mono">{{ formatPrice(m.price) }}원</span>
-                    <button class="btn-cart btn-cart-sm" @click="addToCart(m)">담기</button>
+                  <div v-for="m in msg.menus" :key="m.id" class="rec-inline" @click="openMenuDetail(m)">
+                    <img v-if="m.imageUrl" :src="m.imageUrl" class="rec-thumb" @error="e => e.target.style.display='none'" />
+                    <div v-else class="rec-thumb-empty">{{ categoryEmoji(m.categoryName) }}</div>
+                    <div class="rec-inline-info">
+                      <span class="rec-inline-name">{{ m.name }}</span>
+                      <span class="rec-inline-price mono">{{ formatPrice(m.price) }}원</span>
+                    </div>
+                    <button class="btn-cart btn-cart-sm" @click.stop="addToCart(m)">담기</button>
                   </div>
                 </div>
               </template>
@@ -213,46 +222,6 @@
       </div>
     </transition>
 
-    <!-- ═══ REVIEW MODAL ═══ -->
-    <transition name="modal-fade">
-      <div v-if="showReviewModal" class="modal-backdrop" @click.self="showReviewModal = false">
-        <div class="review-modal">
-          <div class="order-modal-head">
-            <div>
-              <div class="chat-badge">AI ASSISTED</div>
-              <h3 class="display order-modal-title">Review</h3>
-            </div>
-            <button class="modal-x" @click="showReviewModal = false">✕</button>
-          </div>
-
-          <div class="review-body">
-            <p class="review-prompt">주문하신 메뉴의 리뷰를 남겨주세요</p>
-
-            <!-- Star rating -->
-            <div class="star-row">
-              <button v-for="n in 5" :key="n" class="star-btn" :class="{ filled: reviewRating >= n }" @click="reviewRating = n">★</button>
-            </div>
-
-            <!-- Keyword chips -->
-            <div class="review-keywords">
-              <button v-for="kw in reviewKeywordOptions" :key="kw" class="quick-chip" :class="{ selected: reviewKeywords.includes(kw) }" @click="toggleKeyword(kw)">{{ kw }}</button>
-            </div>
-
-            <button class="btn-ai-draft" :disabled="reviewDraftLoading || reviewRating === 0" @click="generateReviewDraft">
-              <span v-if="reviewDraftLoading" class="spinner"></span>
-              {{ reviewDraftLoading ? 'AI 작성 중...' : '✦ AI로 리뷰 초안 생성' }}
-            </button>
-
-            <textarea v-model="reviewText" class="review-textarea" rows="4" placeholder="리뷰를 작성하세요..."></textarea>
-
-            <button class="btn-place-order" :disabled="!reviewText.trim() || reviewSubmitting" @click="submitReview">
-              {{ reviewSubmitting ? '등록 중...' : '리뷰 등록' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </transition>
-
     <!-- Toast -->
     <transition name="toast-pop">
       <div v-if="toastMsg" class="toast"><span class="toast-check">✓</span> {{ toastMsg }}</div>
@@ -266,6 +235,7 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import OrderList from '../components/OrderList.vue'
 import OrderDetailModal from '../components/OrderDetailModal.vue'
+import MenuDetailModal from '../components/MenuDetailModal.vue'
 
 const router = useRouter()
 const emit = defineEmits(['cart-updated', 'logout'])
@@ -273,7 +243,9 @@ const emit = defineEmits(['cart-updated', 'logout'])
 // ── Tab ──
 const currentTab = ref('menu')
 const selectedOrderId = ref(null)
+const selectedMenu = ref(null)
 function openOrderDetail(id) { selectedOrderId.value = id }
+function openMenuDetail(menu) { selectedMenu.value = menu }
 
 // ── Data ──
 const menus = ref([])
@@ -330,56 +302,6 @@ async function loadWaitTimes() {
       if (r.data?.estimated_minutes) waitTimes.value[menu.id] = r.data.estimated_minutes
     } catch {}
   }
-}
-
-// ── Review ──
-const showReviewModal = ref(false)
-const lastOrderId = ref(null)
-const lastOrderItems = ref([])
-const reviewRating = ref(0)
-const reviewText = ref('')
-const reviewKeywords = ref([])
-const reviewDraftLoading = ref(false)
-const reviewSubmitting = ref(false)
-const reviewKeywordOptions = ['맛있다', '양이 많다', '빠르다', '친절하다', '국물이 좋다', '매콤하다', '신선하다', '가성비 좋다']
-
-function toggleKeyword(kw) {
-  const idx = reviewKeywords.value.indexOf(kw)
-  idx >= 0 ? reviewKeywords.value.splice(idx, 1) : reviewKeywords.value.push(kw)
-}
-
-async function generateReviewDraft() {
-  reviewDraftLoading.value = true
-  try {
-    const menuName = lastOrderItems.value.map(i => i.name || i.menuName).join(', ')
-    const r = await api.post('/reviews/generate', {
-      menu_name: menuName,
-      rating: reviewRating.value,
-      keywords: reviewKeywords.value
-    })
-    reviewText.value = r.data.draft || r.data.review || ''
-  } catch {
-    reviewText.value = ''
-  } finally { reviewDraftLoading.value = false }
-}
-
-async function submitReview() {
-  if (!reviewText.value.trim()) return
-  reviewSubmitting.value = true
-  try {
-    await api.post('/reviews', {
-      orderId: lastOrderId.value,
-      rating: reviewRating.value,
-      content: reviewText.value
-    })
-    showReviewModal.value = false
-    showToast('리뷰가 등록되었습니다!')
-    reviewRating.value = 0
-    reviewText.value = ''
-    reviewKeywords.value = []
-  } catch {
-    showToast('리뷰 등록에 실패했습니다')
-  } finally { reviewSubmitting.value = false }
 }
 
 // ── Load ──
@@ -441,15 +363,11 @@ async function placeOrder() {
   orderError.value = ''
   try {
     const items = cartItems.value.map(i => ({ menuId: i.menuId, quantity: i.quantity }))
-    lastOrderItems.value = [...cartItems.value]
     const orderRes = await api.post('/orders', { items })
-    lastOrderId.value = orderRes.data?.id
     localStorage.removeItem('cart')
     refreshCart()
     showOrderModal.value = false
     showToast('주문이 완료되었습니다!')
-    // Show review modal after short delay
-    setTimeout(() => { showReviewModal.value = true }, 1500)
   } catch (e) {
     orderError.value = e.response?.data?.message || '주문 중 오류가 발생했습니다.'
   } finally { ordering.value = false }
@@ -643,9 +561,13 @@ function scrollChat() {
 .msg-text { margin-bottom: 4px; }
 
 .rec-cards-inline { display: flex; flex-direction: column; gap: 6px; }
-.rec-inline { display: flex; align-items: center; gap: 8px; background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 8px 10px; }
-.rec-inline-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-primary); }
-.rec-inline-price { font-size: 12px; color: var(--accent-soft); }
+.rec-inline { display: flex; align-items: center; gap: 10px; background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 8px 10px; cursor: pointer; transition: var(--transition); }
+.rec-inline:hover { background: var(--bg-hover); }
+.rec-thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
+.rec-thumb-empty { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; opacity: 0.5; }
+.rec-inline-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.rec-inline-name { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rec-inline-price { font-size: 11px; color: var(--accent-soft); }
 
 .chat-input-area { padding: 12px 16px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
 .chat-field { flex: 1; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none; transition: var(--transition); }
@@ -706,24 +628,4 @@ function scrollChat() {
 .toast-pop-leave-active { animation: toastIn 0.2s ease reverse; }
 @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px) scale(0.95); } to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); } }
 
-/* ═══ REVIEW MODAL ═══ */
-.review-modal { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-xl); width: 480px; max-height: 85vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
-.review-body { padding: 20px 24px 24px; display: flex; flex-direction: column; gap: 16px; }
-.review-prompt { font-size: 14px; color: var(--text-secondary); }
-
-.star-row { display: flex; gap: 4px; }
-.star-btn { font-size: 28px; color: var(--bg-subtle); transition: var(--transition); background: none; border: none; cursor: pointer; line-height: 1; }
-.star-btn.filled { color: #fbbf24; text-shadow: 0 0 8px rgba(251,191,36,0.4); }
-.star-btn:hover { transform: scale(1.15); }
-
-.review-keywords { display: flex; flex-wrap: wrap; gap: 6px; }
-.review-keywords .quick-chip.selected { background: var(--accent-bg); border-color: var(--accent); color: var(--accent-soft); }
-
-.btn-ai-draft { background: var(--bg-card); border: 1px dashed var(--accent); color: var(--accent-soft); padding: 10px 16px; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 6px; }
-.btn-ai-draft:hover:not(:disabled) { background: var(--accent-bg); }
-.btn-ai-draft:disabled { opacity: 0.4; cursor: not-allowed; }
-
-.review-textarea { width: 100%; padding: 12px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 13px; resize: vertical; min-height: 80px; outline: none; transition: var(--transition); }
-.review-textarea::placeholder { color: var(--text-muted); }
-.review-textarea:focus { border-color: var(--accent); }
 </style>

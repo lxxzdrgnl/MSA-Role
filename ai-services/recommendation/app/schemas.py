@@ -22,6 +22,7 @@ class RecommendationResponse(BaseModel):
 class EmbeddingSyncRequest(BaseModel):
     menu_id: int
     name: str
+    category: Optional[str] = ""
     description: Optional[str] = ""
     tags: Optional[str] = ""
     allergens: Optional[str] = ""

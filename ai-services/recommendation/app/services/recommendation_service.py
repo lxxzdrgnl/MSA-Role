@@ -53,6 +53,17 @@ def _parse_gpt_response(content: str) -> RecommendationResponse:
     )
 
 
+def _fallback_from_search(search_results: list, message: str) -> RecommendationResponse:
+    """Build recommendation directly from ChromaDB results (no GPT needed)."""
+    menu_ids = [item["menu_id"] for item in search_results[:3]]
+    names = [item["metadata"].get("name", "") for item in search_results[:3]]
+    return RecommendationResponse(
+        menu_ids=menu_ids,
+        reason=f"{', '.join(names)}을(를) 추천합니다.",
+        keywords=[w for w in message.split() if len(w) > 1][:3],
+    )
+
+
 def chat_recommend(message: str) -> RecommendationResponse:
     """Chat-based menu recommendation using RAG."""
     try:
@@ -68,20 +79,23 @@ def chat_recommend(message: str) -> RecommendationResponse:
 
         context = _build_context(search_results)
 
-        response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"메뉴 후보:\n{context}\n\n사용자: {message}",
-                },
-            ],
-            temperature=0.7,
-            max_tokens=500,
-        )
-
-        return _parse_gpt_response(response.choices[0].message.content)
+        try:
+            response = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": f"메뉴 후보:\n{context}\n\n사용자: {message}",
+                    },
+                ],
+                temperature=0.7,
+                max_tokens=500,
+            )
+            return _parse_gpt_response(response.choices[0].message.content)
+        except Exception as e:
+            logger.warn(f"GPT call failed, using search fallback: {e}")
+            return _fallback_from_search(search_results, message)
 
     except Exception as e:
         logger.error(f"Chat recommendation failed: {e}")
@@ -105,22 +119,27 @@ def keyword_recommend(keywords: List[str]) -> RecommendationResponse:
 
         context = _build_context(search_results)
 
-        response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": f"메뉴 후보:\n{context}\n\n사용자 키워드: {', '.join(keywords)}",
-                },
-            ],
-            temperature=0.7,
-            max_tokens=500,
-        )
-
-        result = _parse_gpt_response(response.choices[0].message.content)
-        result.keywords = keywords
-        return result
+        try:
+            response = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": f"메뉴 후보:\n{context}\n\n사용자 키워드: {', '.join(keywords)}",
+                    },
+                ],
+                temperature=0.7,
+                max_tokens=500,
+            )
+            result = _parse_gpt_response(response.choices[0].message.content)
+            result.keywords = keywords
+            return result
+        except Exception as e:
+            logger.warn(f"GPT call failed, using search fallback: {e}")
+            result = _fallback_from_search(search_results, " ".join(keywords))
+            result.keywords = keywords
+            return result
 
     except Exception as e:
         logger.error(f"Keyword recommendation failed: {e}")

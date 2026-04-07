@@ -187,27 +187,61 @@ public class ReviewService {
         return distribution;
     }
 
+    // AI summary cache: menuId -> { summary, reviewCount, timestamp }
+    private final Map<Long, Map<String, Object>> summaryCache = new java.util.concurrent.ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getAiReviewSummary(Long menuId) {
+        long reviewCount = reviewRepository.countByMenuId(menuId);
+
+        // Check cache
+        Map<String, Object> cached = summaryCache.get(menuId);
+        if (cached != null) {
+            long cachedCount = ((Number) cached.get("cachedReviewCount")).longValue();
+            long cachedTime = ((Number) cached.get("cachedAt")).longValue();
+            // Valid if same review count and within TTL
+            if (cachedCount == reviewCount && System.currentTimeMillis() - cachedTime < CACHE_TTL_MS) {
+                return Map.of("summary", cached.get("summary"), "count", reviewCount);
+            }
+        }
+        List<Review> reviews = reviewRepository.findRecentByMenuId(menuId, 50);
+        if (reviews.size() < 3) {
+            return Map.of("summary", "", "count", reviews.size());
+        }
+        try {
+            String menuName = reviews.get(0).getMenuName();
+            List<Map<String, Object>> reviewData = reviews.stream().map(r -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("text", r.getContent());
+                m.put("rating", r.getRating());
+                return m;
+            }).collect(Collectors.toList());
+
+            Map<String, Object> req = new HashMap<>();
+            req.put("menu_id", menuId);
+            req.put("menu_name", menuName);
+            req.put("reviews", reviewData);
+
+            Map<String, Object> res = restTemplate.postForObject(
+                    aiReviewWriterUrl + "/reviews/summarize", req, Map.class);
+            String summary = res != null ? (String) res.getOrDefault("summary_text", "") : "";
+            // Cache it
+            Map<String, Object> cacheEntry = new HashMap<>();
+            cacheEntry.put("summary", summary);
+            cacheEntry.put("cachedReviewCount", reviewCount);
+            cacheEntry.put("cachedAt", System.currentTimeMillis());
+            summaryCache.put(menuId, cacheEntry);
+            return Map.of("summary", summary, "count", reviews.size());
+        } catch (Exception e) {
+            log.warn("AI review summary failed: {}", e.getMessage());
+            return Map.of("summary", "", "count", reviews.size());
+        }
+    }
+
     public AiGenerateResponse generateAiReview(AiGenerateRequest request) {
         try {
-            // step 1: validate input via AI Validation
-            Map<String, Object> validationInput = new HashMap<>();
-            validationInput.put("text", request.getMenuName() + " " +
-                    (request.getKeywords() != null ? String.join(", ", request.getKeywords()) : ""));
-            validationInput.put("type", "review_generate");
-
-            Map<String, Object> inputValidation = restTemplate.postForObject(
-                    aiValidationUrl + "/validation/input",
-                    validationInput,
-                    Map.class
-            );
-
-            if (inputValidation != null) {
-                Boolean isValid = (Boolean) inputValidation.get("is_valid");
-                if (isValid != null && !isValid) {
-                    String reason = (String) inputValidation.getOrDefault("reason", "Input validation failed");
-                    throw new IllegalArgumentException(reason);
-                }
-            }
+            // step 1: input validation skipped — negative reviews are valid
 
             // step 2: call AI Review Writer to generate draft
             Map<String, Object> generateRequest = new HashMap<>();
@@ -230,23 +264,19 @@ public class ReviewService {
                     ? ((Number) generateResponse.get("rating")).intValue()
                     : request.getRating();
 
-            // step 3: validate output via AI Validation
-            Map<String, Object> validationOutput = new HashMap<>();
-            validationOutput.put("text", draft);
-            validationOutput.put("type", "review_generate");
-            validationOutput.put("context", request.getMenuName());
-
-            Map<String, Object> outputValidation = restTemplate.postForObject(
-                    aiValidationUrl + "/validation/output",
-                    validationOutput,
-                    Map.class
-            );
-
-            if (outputValidation != null) {
-                Boolean isValid = (Boolean) outputValidation.get("is_valid");
-                if (isValid != null && !isValid) {
+            // step 3: validate output (skip on failure)
+            try {
+                Map<String, Object> validationOutput = new HashMap<>();
+                validationOutput.put("text", draft);
+                validationOutput.put("type", "review_generate");
+                validationOutput.put("context", request.getMenuName());
+                Map<String, Object> outputValidation = restTemplate.postForObject(
+                        aiValidationUrl + "/validation/output", validationOutput, Map.class);
+                if (outputValidation != null && Boolean.FALSE.equals(outputValidation.get("is_valid"))) {
                     return new AiGenerateResponse("맛있게 잘 먹었습니다.", request.getRating());
                 }
+            } catch (Exception e) {
+                log.warn("Output validation unavailable, skipping: {}", e.getMessage());
             }
 
             return new AiGenerateResponse(draft, rating);

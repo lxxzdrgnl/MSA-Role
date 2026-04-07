@@ -55,6 +55,7 @@ async def startup_event():
                     EmbeddingSyncRequest(
                         menu_id=m.get("id", 0),
                         name=m.get("name", ""),
+                        category=m.get("categoryName", m.get("category_name", "")),
                         description=m.get("description", ""),
                         tags=m.get("tags", ""),
                         allergens=m.get("allergens", ""),

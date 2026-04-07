@@ -63,6 +63,11 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getReviewsByOrder(orderId, page, size));
     }
 
+    @GetMapping("/ai-summary")
+    public ResponseEntity<java.util.Map<String, Object>> getAiSummary(@RequestParam Long menuId) {
+        return ResponseEntity.ok(reviewService.getAiReviewSummary(menuId));
+    }
+
     @PostMapping("/generate")
     public ResponseEntity<AiGenerateResponse> generateReview(
             @Valid @RequestBody AiGenerateRequest request) {
