@@ -6,3 +6,5 @@ services:
   menu-url: ${MENU_SERVICE_URL:http://localhost:8082}
   order-url: ${ORDER_SERVICE_URL:http://localhost:8083}
   review-url: ${REVIEW_SERVICE_URL:http://localhost:8084}
+  ai-recommendation-url: ${AI_RECOMMENDATION_URL:http://localhost:8001}
+  ai-operations-url: ${AI_OPERATIONS_URL:http://localhost:8003}

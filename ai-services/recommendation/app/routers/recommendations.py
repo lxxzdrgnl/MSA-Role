@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from app.schemas import ChatRequest, KeywordRequest, RecommendationResponse
 from app.services import recommendation_service
 
-router = APIRouter(prefix="/recommendations", tags=["recommendations"])
+router = APIRouter(prefix="/api/recommendations", tags=["recommendations"])
 
 
 @router.post("/chat", response_model=RecommendationResponse)

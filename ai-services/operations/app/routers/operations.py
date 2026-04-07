@@ -10,7 +10,7 @@ from app.schemas import (
 )
 from app.services import congestion_service, operations_service
 
-router = APIRouter(prefix="/operations", tags=["operations"])
+router = APIRouter(prefix="/api/operations", tags=["operations"])
 
 
 @router.get("/congestion", response_model=CongestionResponse)

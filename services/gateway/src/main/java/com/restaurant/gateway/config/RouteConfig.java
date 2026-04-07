@@ -21,6 +21,12 @@ public class RouteConfig {
     @Value("${services.review-url}")
     private String reviewUrl;
 
+    @Value("${services.ai-recommendation-url}")
+    private String aiRecommendationUrl;
+
+    @Value("${services.ai-operations-url}")
+    private String aiOperationsUrl;
+
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         return builder.build();
@@ -36,6 +42,8 @@ public class RouteConfig {
         if (path.startsWith("/api/menus")) return menuUrl;
         if (path.startsWith("/api/orders")) return orderUrl;
         if (path.startsWith("/api/reviews")) return reviewUrl;
+        if (path.startsWith("/api/recommendations")) return aiRecommendationUrl;
+        if (path.startsWith("/api/operations")) return aiOperationsUrl;
         return null;
     }
 }
