@@ -159,6 +159,17 @@ public class MenuService {
         menuRepository.updateBestFlag(id, isBest);
     }
 
+    public MenuResponse toggleBestSeller(Long id) {
+        Menu menu = menuRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("메뉴를 찾을 수 없습니다: " + id));
+        menuRepository.updateBestFlag(id, !Boolean.TRUE.equals(menu.getIsBest()));
+        return toResponse(menuRepository.findById(id).orElseThrow());
+    }
+
+    public void deleteCategory(Long id) {
+        categoryRepository.deleteById(id);
+    }
+
     // --- Image ---
 
     private String saveImage(MultipartFile file) {

@@ -45,6 +45,10 @@ public class CategoryRepository {
         return results.stream().findFirst();
     }
 
+    public void deleteById(Long id) {
+        jdbcTemplate.update("DELETE FROM categories WHERE id = ?", id);
+    }
+
     public Category save(Category category) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {

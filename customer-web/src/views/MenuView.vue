@@ -25,11 +25,11 @@
 
       <!-- Category tabs -->
       <div class="cat-strip">
-        <button class="cat-pill" :class="{ active: selectedCategory === '' }" @click="selectCategory('')">전체</button>
+        <button class="cat-pill" :class="{ active: selectedCategory === null }" @click="selectCategory(null)">전체</button>
         <button
           v-for="cat in categories" :key="cat.id"
-          class="cat-pill" :class="{ active: selectedCategory === cat.name }"
-          @click="selectCategory(cat.name)"
+          class="cat-pill" :class="{ active: selectedCategory === cat.id }"
+          @click="selectCategory(cat.id)"
         >{{ cat.name }}</button>
       </div>
     </header>
@@ -167,7 +167,7 @@ import api from '../api'
 const emit = defineEmits(['cart-updated'])
 const menus = ref([])
 const categories = ref([])
-const selectedCategory = ref('')
+const selectedCategory = ref(null) // stores category ID (Long) or null for all
 const searchQuery = ref('')
 const loading = ref(false)
 const toastMsg = ref('')
@@ -192,14 +192,14 @@ async function loadMenus() {
   loading.value = true
   try {
     const params = { page: 0, size: 50 }
-    if (selectedCategory.value) params.category = selectedCategory.value
-    if (searchQuery.value) params.search = searchQuery.value
+    if (selectedCategory.value !== null) params.category = selectedCategory.value
+    if (searchQuery.value) params.keyword = searchQuery.value
     const r = await api.get('/menus', { params })
     menus.value = r.data.content || r.data
   } catch {} finally { loading.value = false }
 }
 
-function selectCategory(name) { selectedCategory.value = name; loadMenus() }
+function selectCategory(id) { selectedCategory.value = id; loadMenus() }
 
 let searchTimer = null
 function handleSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(loadMenus, 400) }
