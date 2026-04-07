@@ -1,0 +1,8 @@
+server:
+  port: 8080
+
+services:
+  auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
+  menu-url: ${MENU_SERVICE_URL:http://localhost:8082}
+  order-url: ${ORDER_SERVICE_URL:http://localhost:8083}
+  review-url: ${REVIEW_SERVICE_URL:http://localhost:8084}

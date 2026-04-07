@@ -13,7 +13,7 @@ services:
 
   # Service Backend
   auth-service:
-    build: ./auth-service
+    build: ./services/auth
     ports:
       - "8081:8081"
     volumes:
@@ -29,7 +29,7 @@ services:
       - backend-net
 
   menu-service:
-    build: ./menu-service
+    build: ./services/menu
     ports:
       - "8082:8082"
     volumes:
@@ -44,7 +44,7 @@ services:
       - backend-net
 
   order-service:
-    build: ./order-service
+    build: ./services/order
     ports:
       - "8083:8083"
     volumes:
@@ -59,7 +59,7 @@ services:
       - backend-net
 
   review-service:
-    build: ./review-service
+    build: ./services/review
     ports:
       - "8084:8084"
     volumes:
@@ -76,7 +76,7 @@ services:
       - backend-net
 
   gateway-service:
-    build: ./gateway-service
+    build: ./services/gateway
     ports:
       - "8080:8080"
     environment:
@@ -96,7 +96,7 @@ services:
 
   # AI Backend
   ai-recommendation:
-    build: ./ai-recommendation
+    build: ./ai-services/recommendation
     ports:
       - "8001:8000"
     volumes:
@@ -108,7 +108,7 @@ services:
       - backend-net
 
   ai-review-writer:
-    build: ./ai-review-writer
+    build: ./ai-services/review-writer
     ports:
       - "8002:8000"
     environment:
@@ -117,7 +117,7 @@ services:
       - backend-net
 
   ai-operations:
-    build: ./ai-operations
+    build: ./ai-services/operations
     ports:
       - "8003:8000"
     environment:
@@ -128,7 +128,7 @@ services:
       - backend-net
 
   ai-validation:
-    build: ./ai-validation
+    build: ./ai-services/validation
     ports:
       - "8004:8000"
     environment:

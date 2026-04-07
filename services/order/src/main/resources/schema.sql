@@ -1,0 +1,17 @@
+CREATE TABLE IF NOT EXISTS orders (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'PENDING',
+    total_price INTEGER NOT NULL,
+    created_at  DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at  DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS order_items (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id  INTEGER NOT NULL REFERENCES orders(id),
+    menu_id   INTEGER NOT NULL,
+    menu_name TEXT NOT NULL,
+    price     INTEGER NOT NULL,
+    quantity  INTEGER NOT NULL DEFAULT 1
+);

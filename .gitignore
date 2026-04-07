@@ -3,26 +3,38 @@
 *.jar
 build/
 .gradle/
+!gradle/wrapper/gradle-wrapper.jar
 
 # Python
 __pycache__/
 *.pyc
 .venv/
 venv/
+*.egg-info/
+
+# Node
+node_modules/
+dist/
 
 # IDE
 .idea/
 *.iml
 .vscode/
+*.swp
+*.swo
 
 # Env
 .env
+.env.local
 
 # Data
 *.db
 data/
 chroma_data/
 
-# Node
-node_modules/
-dist/
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log
