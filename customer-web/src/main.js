@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
 import api from './api'
+import './style.css'
 
 async function bootstrap() {
   const token = localStorage.getItem('token')

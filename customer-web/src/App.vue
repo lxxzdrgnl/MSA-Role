@@ -1,21 +1,48 @@
 <template>
   <div id="app-root">
-    <nav v-if="showNav" class="navbar">
-      <div class="nav-brand">🍽 레스토랑</div>
-      <div class="nav-links">
-        <router-link to="/" class="nav-link">메뉴</router-link>
-        <router-link to="/cart" class="nav-link cart-link">
-          장바구니
-          <span v-if="cartCount > 0" class="cart-badge">{{ cartCount }}</span>
-        </router-link>
-        <router-link to="/orders" class="nav-link">주문 내역</router-link>
-        <button class="btn-logout" @click="logout">로그아웃</button>
-      </div>
-    </nav>
+    <router-view @cart-updated="refreshCartCount" />
 
-    <main :class="{ 'with-nav': showNav }">
-      <router-view @cart-updated="refreshCartCount" />
-    </main>
+    <!-- Bottom Navigation -->
+    <nav v-if="showNav" class="bottom-nav">
+      <router-link to="/" class="nav-item" :class="{ active: isRoute('/') }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9,22 9,12 15,12 15,22"/>
+        </svg>
+        <span>메뉴</span>
+      </router-link>
+
+      <router-link to="/cart" class="nav-item" :class="{ active: isRoute('/cart') }">
+        <div class="cart-icon-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/>
+            <path d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 001.95-1.56l1.35-6.44H6"/>
+          </svg>
+          <span v-if="cartCount > 0" class="cart-dot">{{ cartCount > 9 ? '9+' : cartCount }}</span>
+        </div>
+        <span>장바구니</span>
+      </router-link>
+
+      <router-link to="/orders" class="nav-item" :class="{ active: isRoute('/orders') }">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14,2 14,8 20,8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10,9 9,9 8,9"/>
+        </svg>
+        <span>주문내역</span>
+      </router-link>
+
+      <button class="nav-item" @click="logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>로그아웃</span>
+      </button>
+    </nav>
   </div>
 </template>
 
@@ -25,20 +52,22 @@ import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
 const route = useRoute()
-
 const cartCount = ref(0)
 
-const showNav = computed(() => {
-  return route.path !== '/login' && route.path !== '/register'
-})
+const showNav = computed(() =>
+  route.path !== '/login' && route.path !== '/register'
+)
+
+function isRoute(path) {
+  if (path === '/') return route.path === '/'
+  return route.path.startsWith(path)
+}
 
 function getCartCount() {
   try {
     const cart = JSON.parse(localStorage.getItem('cart') || '[]')
     return cart.reduce((sum, item) => sum + item.quantity, 0)
-  } catch {
-    return 0
-  }
+  } catch { return 0 }
 }
 
 function refreshCartCount() {
@@ -51,188 +80,76 @@ function logout() {
   router.push('/login')
 }
 
-// Update cart count on route change
-watch(route, () => {
-  refreshCartCount()
-})
-
+watch(route, refreshCartCount)
 onMounted(() => {
   refreshCartCount()
-  // Listen for storage events from other tabs
   window.addEventListener('storage', refreshCartCount)
 })
 </script>
 
-<style>
-.navbar {
+<style scoped>
+.bottom-nav {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 100;
-  background: #fff;
-  border-bottom: 1px solid #e0e0e0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
+  background: rgba(24, 22, 18, 0.92);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-top: 1px solid rgba(255,255,255,0.07);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  height: 56px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+  align-items: stretch;
+  height: 64px;
+  padding: 0 8px;
+  z-index: 200;
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
-.nav-brand {
-  font-size: 18px;
-  font-weight: 700;
-  color: #e05c2a;
-}
-
-.nav-links {
+.nav-item {
+  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 20px;
-}
-
-.nav-link {
-  text-decoration: none;
-  color: #555;
-  font-size: 14px;
-  font-weight: 500;
-  transition: color 0.15s;
-  position: relative;
-}
-
-.nav-link:hover,
-.nav-link.router-link-active {
-  color: #e05c2a;
-}
-
-.cart-link {
-  display: flex;
-  align-items: center;
+  justify-content: center;
   gap: 4px;
-}
-
-.cart-badge {
-  background: #e05c2a;
-  color: #fff;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 1px 6px;
-  min-width: 18px;
-  text-align: center;
-}
-
-.btn-logout {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
   background: none;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  color: #888;
-  cursor: pointer;
-  font-size: 13px;
-  padding: 5px 12px;
-  transition: all 0.15s;
-}
-
-.btn-logout:hover {
-  border-color: #e05c2a;
-  color: #e05c2a;
-}
-
-main {
-  min-height: 100vh;
-}
-
-main.with-nav {
-  padding-top: 56px;
-}
-
-.page-container {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px 16px;
-}
-
-/* Common form styles */
-.form-group {
-  margin-bottom: 16px;
-}
-
-.form-group label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #555;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.form-group input:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: #e05c2a;
-}
-
-.btn-primary {
-  background: #e05c2a;
-  color: #fff;
   border: none;
-  border-radius: 8px;
-  padding: 11px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-  width: 100%;
+  transition: color 0.2s;
+  padding: 8px 0;
+  position: relative;
+  text-decoration: none;
+  font-family: 'Noto Sans KR', sans-serif;
 }
-
-.btn-primary:hover {
-  background: #c74d20;
+.nav-item svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  transition: var(--transition);
 }
+.nav-item:hover { color: var(--text-secondary); }
+.nav-item.active { color: var(--accent); }
+.nav-item.active svg { filter: drop-shadow(0 0 6px rgba(232,92,30,0.5)); }
 
-.btn-primary:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background: #fff;
-  color: #e05c2a;
-  border: 1px solid #e05c2a;
-  border-radius: 8px;
-  padding: 10px 20px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.btn-secondary:hover {
-  background: #fff5f2;
-}
-
-.error-msg {
-  color: #d32f2f;
-  font-size: 13px;
-  margin-top: 10px;
+.cart-icon-wrap { position: relative; width: 20px; height: 20px; }
+.cart-dot {
+  position: absolute;
+  top: -5px;
+  right: -7px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 4px;
+  border-radius: 99px;
+  min-width: 16px;
   text-align: center;
-}
-
-.loading {
-  text-align: center;
-  padding: 40px;
-  color: #888;
-  font-size: 14px;
+  border: 1.5px solid var(--bg-elevated);
 }
 </style>
