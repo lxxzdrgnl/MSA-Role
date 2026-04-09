@@ -2,6 +2,8 @@ package com.restaurant.gateway.controller;
 
 import com.restaurant.gateway.config.RouteConfig;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
@@ -10,10 +12,13 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.Enumeration;
 
 @RestController
 public class ProxyController {
+
+    private static final Logger log = LoggerFactory.getLogger(ProxyController.class);
 
     private final RestTemplate restTemplate;
     private final RouteConfig routeConfig;
@@ -24,7 +29,7 @@ public class ProxyController {
     }
 
     @RequestMapping(
-        value = "/api/**",
+        value = {"/api/**", "/images/**"},
         method = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.PATCH, RequestMethod.DELETE}
     )
     public ResponseEntity<byte[]> proxy(HttpServletRequest request) throws IOException {
@@ -38,7 +43,11 @@ public class ProxyController {
                 .body("{\"error\":\"Service not found\"}".getBytes());
         }
 
-        String targetUrl = targetBase + path + (query != null ? "?" + query : "");
+        String targetUrlStr = targetBase + path + (query != null ? "?" + query : "");
+        URI targetUrl = URI.create(targetUrlStr);
+
+        String method = request.getMethod();
+        long startTime = System.currentTimeMillis();
 
         // Copy all request headers (except host/content-length which RestTemplate manages)
         HttpHeaders headers = new HttpHeaders();
@@ -57,8 +66,16 @@ public class ProxyController {
 
         try {
             ResponseEntity<byte[]> response = restTemplate.exchange(
-                targetUrl, HttpMethod.valueOf(request.getMethod()), entity, byte[].class
-            );
+                targetUrl, HttpMethod.valueOf(method), entity, byte[].class);
+
+            long elapsed = System.currentTimeMillis() - startTime;
+            int status = response.getStatusCode().value();
+
+            if (status >= 400) {
+                log.warn("PROXY {} {} -> {} [{}] {}ms", method, path, targetUrlStr, status, elapsed);
+            } else {
+                log.info("PROXY {} {} -> {} [{}] {}ms", method, path, targetUrlStr, status, elapsed);
+            }
 
             HttpHeaders responseHeaders = new HttpHeaders();
             response.getHeaders().forEach((key, values) -> {
@@ -72,6 +89,10 @@ public class ProxyController {
                 .body(response.getBody());
 
         } catch (HttpClientErrorException | HttpServerErrorException e) {
+            long elapsed = System.currentTimeMillis() - startTime;
+            int status = e.getStatusCode().value();
+            log.warn("PROXY {} {} -> {} [{}] {}ms", method, path, targetUrlStr, status, elapsed);
+
             return ResponseEntity.status(e.getStatusCode())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(e.getResponseBodyAsByteArray());

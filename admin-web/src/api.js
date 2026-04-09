@@ -61,14 +61,10 @@ export const getMenus = (params) =>
   api.get('/menus', { params })
 
 export const createMenu = (formData) =>
-  api.post('/menus', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  api.post('/menus', formData)
 
 export const updateMenu = (id, formData) =>
-  api.put(`/menus/${id}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  })
+  api.put(`/menus/${id}`, formData)
 
 export const toggleSoldOut = (id, isSoldOut) =>
   api.patch(`/menus/${id}/sold-out`, { isSoldOut })
@@ -88,6 +84,9 @@ export const getCategories = () =>
 
 export const createCategory = (name) =>
   api.post('/menus/categories', { name })
+
+export const updateCategory = (id, data) =>
+  api.put(`/menus/categories/${id}`, data)
 
 export const deleteCategory = (id) =>
   api.delete(`/menus/categories/${id}`)

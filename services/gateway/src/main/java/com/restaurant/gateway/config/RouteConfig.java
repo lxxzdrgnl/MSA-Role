@@ -46,6 +46,7 @@ public class RouteConfig {
         if (path.startsWith("/api/reviews")) return reviewUrl;
         if (path.startsWith("/api/recommendations")) return aiRecommendationUrl;
         if (path.startsWith("/api/operations")) return aiOperationsUrl;
+        if (path.startsWith("/images")) return menuUrl;
         return null;
     }
 }
