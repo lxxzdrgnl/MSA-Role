@@ -49,6 +49,18 @@ public class CategoryRepository {
         jdbcTemplate.update("DELETE FROM categories WHERE id = ?", id);
     }
 
+    public void update(Category category) {
+        jdbcTemplate.update(
+            "UPDATE categories SET name = ?, sort_order = ? WHERE id = ?",
+            category.getName(), category.getSortOrder(), category.getId());
+    }
+
+    public int countMenusByCategory(Long categoryId) {
+        Integer count = jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM menus WHERE category_id = ?", Integer.class, categoryId);
+        return count != null ? count : 0;
+    }
+
     public Category save(Category category) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {

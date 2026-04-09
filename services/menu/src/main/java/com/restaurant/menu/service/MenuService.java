@@ -43,7 +43,7 @@ public class MenuService {
 
     public List<CategoryResponse> getAllCategories() {
         return categoryRepository.findAll().stream()
-            .map(CategoryResponse::from)
+            .map(c -> CategoryResponse.from(c, categoryRepository.countMenusByCategory(c.getId())))
             .toList();
     }
 
@@ -54,7 +54,19 @@ public class MenuService {
         Category category = new Category();
         category.setName(request.name());
         category.setSortOrder(request.sortOrder() != null ? request.sortOrder() : 0);
-        return CategoryResponse.from(categoryRepository.save(category));
+        Category saved = categoryRepository.save(category);
+        return CategoryResponse.from(saved, 0);
+    }
+
+    public CategoryResponse updateCategory(Long id, CategoryRequest request) {
+        Category category = categoryRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("카테고리를 찾을 수 없습니다: " + id));
+        category.setName(request.name());
+        if (request.sortOrder() != null) {
+            category.setSortOrder(request.sortOrder());
+        }
+        categoryRepository.update(category);
+        return CategoryResponse.from(category, categoryRepository.countMenusByCategory(id));
     }
 
     // --- Menu CRUD ---
@@ -130,6 +142,7 @@ public class MenuService {
         if (request.cookTimeMinutes() != null) menu.setCookTimeMinutes(request.cookTimeMinutes());
 
         if (image != null && !image.isEmpty()) {
+            deleteImageFile(menu.getImageUrl());
             menu.setImageUrl(saveImage(image));
         }
 
@@ -140,8 +153,9 @@ public class MenuService {
     }
 
     public void deleteMenu(Long id) {
-        menuRepository.findById(id)
+        Menu menu = menuRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("메뉴를 찾을 수 없습니다: " + id));
+        deleteImageFile(menu.getImageUrl());
         menuRepository.deleteById(id);
         deleteEmbedding(id);
     }
@@ -183,6 +197,17 @@ public class MenuService {
             return "/images/" + filename;
         } catch (IOException e) {
             throw new RuntimeException("이미지 저장 실패", e);
+        }
+    }
+
+    private void deleteImageFile(String imageUrl) {
+        if (imageUrl == null || imageUrl.isBlank()) return;
+        try {
+            String filename = imageUrl.replace("/images/", "");
+            Path filePath = Paths.get(IMAGE_DIR, filename);
+            Files.deleteIfExists(filePath);
+        } catch (IOException e) {
+            log.warn("이미지 파일 삭제 실패: {}", imageUrl, e);
         }
     }
 

@@ -124,6 +124,15 @@ public class MenuController {
         return ResponseEntity.status(HttpStatus.CREATED).body(menuService.createCategory(request));
     }
 
+    @PutMapping("/categories/{id}")
+    public ResponseEntity<CategoryResponse> updateCategory(
+            @RequestHeader("X-User-Role") String role,
+            @PathVariable Long id,
+            @Valid @RequestBody CategoryRequest request) {
+        checkAdmin(role);
+        return ResponseEntity.ok(menuService.updateCategory(id, request));
+    }
+
     @DeleteMapping("/categories/{id}")
     public ResponseEntity<Void> deleteCategory(
             @RequestHeader("X-User-Role") String role,
