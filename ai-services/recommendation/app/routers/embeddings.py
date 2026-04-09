@@ -1,26 +1,27 @@
 from fastapi import APIRouter
 
+from app.errors import ERROR_RESPONSES
 from app.schemas import EmbeddingSyncRequest, BulkSyncRequest
 from app.services import embedding_service
 
 router = APIRouter(prefix="/embeddings", tags=["embeddings"])
 
 
-@router.post("/sync")
+@router.post("/sync", responses=ERROR_RESPONSES)
 async def sync_embedding(request: EmbeddingSyncRequest):
     """Sync a single menu item embedding."""
     embedding_service.sync_menu(request)
     return {"status": "ok", "menu_id": request.menu_id}
 
 
-@router.post("/bulk-sync")
+@router.post("/bulk-sync", responses=ERROR_RESPONSES)
 async def bulk_sync_embeddings(request: BulkSyncRequest):
     """Bulk sync menu embeddings."""
     embedding_service.bulk_sync(request.menus)
     return {"status": "ok", "count": len(request.menus)}
 
 
-@router.delete("/{menu_id}")
+@router.delete("/{menu_id}", responses=ERROR_RESPONSES)
 async def delete_embedding(menu_id: int):
     """Delete a menu embedding."""
     embedding_service.delete_menu(menu_id)
