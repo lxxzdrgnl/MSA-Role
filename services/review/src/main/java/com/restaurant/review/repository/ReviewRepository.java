@@ -67,9 +67,9 @@ public class ReviewRepository {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    public List<Review> findAll(int offset, int limit) {
+    public List<Review> findAll(int offset, int limit, String orderBy) {
         return jdbcTemplate.query(
-                "SELECT * FROM reviews ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM reviews ORDER BY " + orderBy + " LIMIT ? OFFSET ?",
                 ROW_MAPPER, limit, offset
         );
     }
@@ -79,11 +79,25 @@ public class ReviewRepository {
         return count != null ? count : 0;
     }
 
-    public List<Review> findByMenuId(Long menuId, int offset, int limit) {
+    public List<Review> findByMenuId(Long menuId, int offset, int limit, String orderBy) {
         return jdbcTemplate.query(
-                "SELECT * FROM reviews WHERE menu_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM reviews WHERE menu_id = ? ORDER BY " + orderBy + " LIMIT ? OFFSET ?",
                 ROW_MAPPER, menuId, limit, offset
         );
+    }
+
+    public List<Review> findByMenuIdAndRating(Long menuId, int rating, int offset, int limit, String orderBy) {
+        return jdbcTemplate.query(
+                "SELECT * FROM reviews WHERE menu_id = ? AND rating = ? ORDER BY " + orderBy + " LIMIT ? OFFSET ?",
+                ROW_MAPPER, menuId, rating, limit, offset
+        );
+    }
+
+    public long countByMenuIdAndRating(Long menuId, int rating) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM reviews WHERE menu_id = ? AND rating = ?", Long.class, menuId, rating
+        );
+        return count != null ? count : 0;
     }
 
     public long countByMenuId(Long menuId) {
@@ -93,9 +107,9 @@ public class ReviewRepository {
         return count != null ? count : 0;
     }
 
-    public List<Review> findByOrderId(Long orderId, int offset, int limit) {
+    public List<Review> findByOrderId(Long orderId, int offset, int limit, String orderBy) {
         return jdbcTemplate.query(
-                "SELECT * FROM reviews WHERE order_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM reviews WHERE order_id = ? ORDER BY " + orderBy + " LIMIT ? OFFSET ?",
                 ROW_MAPPER, orderId, limit, offset
         );
     }
@@ -107,9 +121,9 @@ public class ReviewRepository {
         return count != null ? count : 0;
     }
 
-    public List<Review> findByUserId(Long userId, int offset, int limit) {
+    public List<Review> findByUserId(Long userId, int offset, int limit, String orderBy) {
         return jdbcTemplate.query(
-                "SELECT * FROM reviews WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM reviews WHERE user_id = ? ORDER BY " + orderBy + " LIMIT ? OFFSET ?",
                 ROW_MAPPER, userId, limit, offset
         );
     }

@@ -4,13 +4,14 @@ import java.util.List;
 
 public record PageResponse<T>(
     List<T> content,
-    int currentPage,
+    int page,
     int size,
-    long totalCount,
-    int totalPages
+    long totalElements,
+    int totalPages,
+    String sort
 ) {
-    public static <T> PageResponse<T> of(List<T> content, int currentPage, int size, long totalCount) {
-        int totalPages = (int) Math.ceil((double) totalCount / size);
-        return new PageResponse<>(content, currentPage, size, totalCount, totalPages);
+    public static <T> PageResponse<T> of(List<T> content, int page, int size, long totalElements, String sort) {
+        int totalPages = size > 0 ? (int) Math.ceil((double) totalElements / size) : 0;
+        return new PageResponse<>(content, page, size, totalElements, totalPages, sort);
     }
 }

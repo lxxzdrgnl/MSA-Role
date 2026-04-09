@@ -78,38 +78,41 @@ public class OrderService {
         return toResponse(savedOrder, items);
     }
 
-    public PageResponse<OrderResponse> getMyOrders(Long userId, int page, int size) {
-        int offset = (page - 1) * size;
-        List<Order> orders = orderRepository.findByUserId(userId, offset, size);
+    public PageResponse<OrderResponse> getMyOrders(Long userId, int page, int size, String sort) {
+        int offset = page * size;
+        String orderBy = parseSortParam(sort);
+        List<Order> orders = orderRepository.findByUserId(userId, offset, size, orderBy);
         long totalCount = orderRepository.countByUserId(userId);
-        int totalPages = (int) Math.ceil((double) totalCount / size);
-
         List<OrderResponse> responses = orders.stream()
                 .map(o -> toResponse(o, orderItemRepository.findByOrderId(o.getId())))
                 .collect(Collectors.toList());
-
-        return new PageResponse<>(responses, page, totalPages, totalCount);
+        return PageResponse.of(responses, page, size, totalCount, sort);
     }
 
-    public PageResponse<OrderResponse> getAllOrders(int page, int size, String status) {
-        int offset = (page - 1) * size;
-        List<Order> orders;
-        long totalCount;
-
-        if (status != null && !status.isBlank()) {
-            orders = orderRepository.findAllByStatus(status, offset, size);
-            totalCount = orderRepository.countByStatusTotal(status);
-        } else {
-            orders = orderRepository.findAll(offset, size);
-            totalCount = orderRepository.countAll();
-        }
-
-        int totalPages = (int) Math.ceil((double) totalCount / size);
+    public PageResponse<OrderResponse> getAllOrders(int page, int size, String status, String dateFrom, String dateTo, String sort) {
+        int offset = page * size;
+        String orderBy = parseSortParam(sort);
+        List<Order> orders = orderRepository.findAll(offset, size, status, dateFrom, dateTo, orderBy);
+        long totalCount = orderRepository.countAll(status, dateFrom, dateTo);
         List<OrderResponse> responses = orders.stream()
                 .map(o -> toResponse(o, orderItemRepository.findByOrderId(o.getId())))
                 .collect(Collectors.toList());
+        return PageResponse.of(responses, page, size, totalCount, sort);
+    }
 
-        return new PageResponse<>(responses, page, totalPages, totalCount);
+    private String parseSortParam(String sort) {
+        if (sort == null || sort.isBlank()) return "created_at DESC";
+        String[] parts = sort.split(",");
+        String field = parts[0].trim();
+        String direction = parts.length > 1 ? parts[1].trim().toUpperCase() : "DESC";
+        String column = switch (field) {
+            case "totalPrice" -> "total_price";
+            case "status" -> "status";
+            case "createdAt" -> "created_at";
+            default -> "created_at";
+        };
+        if (!"ASC".equals(direction) && !"DESC".equals(direction)) direction = "DESC";
+        return column + " " + direction;
     }
 
     public OrderResponse getOrderById(Long id) {

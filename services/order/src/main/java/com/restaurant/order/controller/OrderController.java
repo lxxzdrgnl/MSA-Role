@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -30,22 +31,28 @@ public class OrderController {
     @GetMapping
     public ResponseEntity<PageResponse<OrderResponse>> getMyOrders(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        PageResponse<OrderResponse> response = orderService.getMyOrders(userId, page, size);
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,DESC") String sort) {
+        if (size > 100) size = 100;
+        PageResponse<OrderResponse> response = orderService.getMyOrders(userId, page, size, sort);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/all")
     public ResponseEntity<PageResponse<OrderResponse>> getAllOrders(
             @RequestHeader("X-User-Role") String role,
-            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo,
+            @RequestParam(defaultValue = "createdAt,DESC") String sort) {
         if (!"ADMIN".equals(role)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            throw new SecurityException("관리자 권한이 필요합니다.");
         }
-        PageResponse<OrderResponse> response = orderService.getAllOrders(page, size, status);
+        if (size > 100) size = 100;
+        PageResponse<OrderResponse> response = orderService.getAllOrders(page, size, status, dateFrom, dateTo, sort);
         return ResponseEntity.ok(response);
     }
 

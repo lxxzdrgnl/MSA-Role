@@ -11,6 +11,7 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -63,9 +64,9 @@ public class OrderRepository {
         return results.isEmpty() ? Optional.empty() : Optional.of(results.get(0));
     }
 
-    public List<Order> findByUserId(Long userId, int offset, int limit) {
+    public List<Order> findByUserId(Long userId, int offset, int limit, String orderBy) {
         return jdbcTemplate.query(
-                "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                "SELECT * FROM orders WHERE user_id = ? ORDER BY " + orderBy + " LIMIT ? OFFSET ?",
                 ROW_MAPPER, userId, limit, offset
         );
     }
@@ -77,22 +78,43 @@ public class OrderRepository {
         return count != null ? count : 0;
     }
 
-    public List<Order> findAll(int offset, int limit) {
-        return jdbcTemplate.query(
-                "SELECT * FROM orders ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                ROW_MAPPER, limit, offset
-        );
+    public List<Order> findAll(int offset, int limit, String status, String dateFrom, String dateTo, String orderBy) {
+        StringBuilder sql = new StringBuilder("SELECT * FROM orders WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND status = ?");
+            params.add(status);
+        }
+        if (dateFrom != null && !dateFrom.isBlank()) {
+            sql.append(" AND created_at >= ?");
+            params.add(dateFrom + " 00:00:00");
+        }
+        if (dateTo != null && !dateTo.isBlank()) {
+            sql.append(" AND created_at <= ?");
+            params.add(dateTo + " 23:59:59");
+        }
+        sql.append(" ORDER BY ").append(orderBy).append(" LIMIT ? OFFSET ?");
+        params.add(limit);
+        params.add(offset);
+        return jdbcTemplate.query(sql.toString(), ROW_MAPPER, params.toArray());
     }
 
-    public List<Order> findAllByStatus(String status, int offset, int limit) {
-        return jdbcTemplate.query(
-                "SELECT * FROM orders WHERE status = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
-                ROW_MAPPER, status, limit, offset
-        );
-    }
-
-    public long countAll() {
-        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM orders", Long.class);
+    public long countAll(String status, String dateFrom, String dateTo) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) FROM orders WHERE 1=1");
+        List<Object> params = new ArrayList<>();
+        if (status != null && !status.isBlank()) {
+            sql.append(" AND status = ?");
+            params.add(status);
+        }
+        if (dateFrom != null && !dateFrom.isBlank()) {
+            sql.append(" AND created_at >= ?");
+            params.add(dateFrom + " 00:00:00");
+        }
+        if (dateTo != null && !dateTo.isBlank()) {
+            sql.append(" AND created_at <= ?");
+            params.add(dateTo + " 23:59:59");
+        }
+        Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
         return count != null ? count : 0;
     }
 

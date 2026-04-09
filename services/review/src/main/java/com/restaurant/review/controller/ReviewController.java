@@ -27,9 +27,12 @@ public class ReviewController {
     @GetMapping
     public ResponseEntity<PageResponse<ReviewResponse>> getReviews(
             @RequestParam(required = false) Long menuId,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(reviewService.getReviews(menuId, page, size));
+            @RequestParam(required = false) Integer rating,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,DESC") String sort) {
+        if (size > 100) size = 100;
+        return ResponseEntity.ok(reviewService.getReviews(menuId, rating, page, size, sort));
     }
 
     @GetMapping("/{id}")
@@ -58,17 +61,21 @@ public class ReviewController {
     @GetMapping("/by-order")
     public ResponseEntity<PageResponse<ReviewResponse>> getByOrder(
             @RequestParam Long orderId,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(reviewService.getReviewsByOrder(orderId, page, size));
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,DESC") String sort) {
+        if (size > 100) size = 100;
+        return ResponseEntity.ok(reviewService.getReviewsByOrder(orderId, page, size, sort));
     }
 
     @GetMapping("/my")
     public ResponseEntity<PageResponse<ReviewResponse>> getMyReviews(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(reviewService.getReviewsByUser(userId, page, size));
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,DESC") String sort) {
+        if (size > 100) size = 100;
+        return ResponseEntity.ok(reviewService.getReviewsByUser(userId, page, size, sort));
     }
 
     @GetMapping("/ai-summary")

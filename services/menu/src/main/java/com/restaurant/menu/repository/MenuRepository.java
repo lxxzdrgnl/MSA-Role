@@ -65,7 +65,7 @@ public class MenuRepository {
             "SELECT * FROM menus WHERE is_best = 1 ORDER BY id", rowMapper);
     }
 
-    public List<Menu> search(Long categoryId, String keyword, int offset, int limit) {
+    public List<Menu> search(Long categoryId, String keyword, int offset, int limit, String orderBy) {
         StringBuilder sql = new StringBuilder("SELECT * FROM menus WHERE 1=1");
         List<Object> params = new ArrayList<>();
 
@@ -80,7 +80,7 @@ public class MenuRepository {
             params.add(like);
             params.add(like);
         }
-        sql.append(" ORDER BY id LIMIT ? OFFSET ?");
+        sql.append(" ORDER BY ").append(orderBy).append(" LIMIT ? OFFSET ?");
         params.add(limit);
         params.add(offset);
 

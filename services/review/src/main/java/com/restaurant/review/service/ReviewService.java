@@ -140,16 +140,20 @@ public class ReviewService {
         responses.forEach(r -> r.setNickname(nicknames.getOrDefault(r.getUserId(), "익명")));
     }
 
-    public PageResponse<ReviewResponse> getReviews(Long menuId, int page, int size) {
-        int offset = (page - 1) * size;
+    public PageResponse<ReviewResponse> getReviews(Long menuId, Integer rating, int page, int size, String sort) {
+        int offset = page * size;
+        String orderBy = parseSortParam(sort);
         List<Review> reviews;
         long totalCount;
 
-        if (menuId != null) {
-            reviews = reviewRepository.findByMenuId(menuId, offset, size);
+        if (menuId != null && rating != null) {
+            reviews = reviewRepository.findByMenuIdAndRating(menuId, rating, offset, size, orderBy);
+            totalCount = reviewRepository.countByMenuIdAndRating(menuId, rating);
+        } else if (menuId != null) {
+            reviews = reviewRepository.findByMenuId(menuId, offset, size, orderBy);
             totalCount = reviewRepository.countByMenuId(menuId);
         } else {
-            reviews = reviewRepository.findAll(offset, size);
+            reviews = reviewRepository.findAll(offset, size, orderBy);
             totalCount = reviewRepository.countAll();
         }
 
@@ -157,30 +161,41 @@ public class ReviewService {
                 .map(ReviewResponse::from)
                 .collect(Collectors.toList());
         attachNicknames(content);
-
-        int totalPages = (int) Math.ceil((double) totalCount / size);
-
-        return new PageResponse<>(content, page, totalPages, totalCount);
+        return PageResponse.of(content, page, size, totalCount, sort);
     }
 
-    public PageResponse<ReviewResponse> getReviewsByOrder(Long orderId, int page, int size) {
-        int offset = (page - 1) * size;
-        List<Review> reviews = reviewRepository.findByOrderId(orderId, offset, size);
+    public PageResponse<ReviewResponse> getReviewsByOrder(Long orderId, int page, int size, String sort) {
+        int offset = page * size;
+        String orderBy = parseSortParam(sort);
+        List<Review> reviews = reviewRepository.findByOrderId(orderId, offset, size, orderBy);
         long totalCount = reviewRepository.countByOrderId(orderId);
         List<ReviewResponse> content = reviews.stream().map(ReviewResponse::from).collect(Collectors.toList());
         attachNicknames(content);
-        int totalPages = (int) Math.ceil((double) totalCount / size);
-        return new PageResponse<>(content, page, totalPages, totalCount);
+        return PageResponse.of(content, page, size, totalCount, sort);
     }
 
-    public PageResponse<ReviewResponse> getReviewsByUser(Long userId, int page, int size) {
-        int offset = (page - 1) * size;
-        List<Review> reviews = reviewRepository.findByUserId(userId, offset, size);
+    public PageResponse<ReviewResponse> getReviewsByUser(Long userId, int page, int size, String sort) {
+        int offset = page * size;
+        String orderBy = parseSortParam(sort);
+        List<Review> reviews = reviewRepository.findByUserId(userId, offset, size, orderBy);
         long totalCount = reviewRepository.countByUserId(userId);
         List<ReviewResponse> content = reviews.stream().map(ReviewResponse::from).collect(Collectors.toList());
         attachNicknames(content);
-        int totalPages = (int) Math.ceil((double) totalCount / size);
-        return new PageResponse<>(content, page, totalPages, totalCount);
+        return PageResponse.of(content, page, size, totalCount, sort);
+    }
+
+    private String parseSortParam(String sort) {
+        if (sort == null || sort.isBlank()) return "created_at DESC";
+        String[] parts = sort.split(",");
+        String field = parts[0].trim();
+        String direction = parts.length > 1 ? parts[1].trim().toUpperCase() : "DESC";
+        String column = switch (field) {
+            case "rating" -> "rating";
+            case "createdAt" -> "created_at";
+            default -> "created_at";
+        };
+        if (!"ASC".equals(direction) && !"DESC".equals(direction)) direction = "DESC";
+        return column + " " + direction;
     }
 
     public ReviewResponse getReviewById(Long id) {

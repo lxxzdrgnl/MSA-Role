@@ -71,14 +71,30 @@ public class MenuService {
 
     // --- Menu CRUD ---
 
-    public PageResponse<MenuResponse> getMenus(Long categoryId, String keyword, int page, int size) {
-        int offset = (page - 1) * size;
-        List<Menu> menus = menuRepository.search(categoryId, keyword, offset, size);
+    public PageResponse<MenuResponse> getMenus(Long categoryId, String keyword, int page, int size, String sort) {
+        int offset = page * size;
+        String orderBy = parseSortParam(sort);
+        List<Menu> menus = menuRepository.search(categoryId, keyword, offset, size, orderBy);
         long totalCount = menuRepository.count(categoryId, keyword);
         List<MenuResponse> content = menus.stream()
             .map(this::toResponse)
             .toList();
-        return PageResponse.of(content, page, size, totalCount);
+        return PageResponse.of(content, page, size, totalCount, sort);
+    }
+
+    private String parseSortParam(String sort) {
+        if (sort == null || sort.isBlank()) return "created_at DESC";
+        String[] parts = sort.split(",");
+        String field = parts[0].trim();
+        String direction = parts.length > 1 ? parts[1].trim().toUpperCase() : "DESC";
+        String column = switch (field) {
+            case "name" -> "name";
+            case "price" -> "price";
+            case "createdAt" -> "created_at";
+            default -> "created_at";
+        };
+        if (!"ASC".equals(direction) && !"DESC".equals(direction)) direction = "DESC";
+        return column + " " + direction;
     }
 
     public MenuResponse getMenu(Long id) {

@@ -25,9 +25,11 @@ public class MenuController {
     public ResponseEntity<PageResponse<MenuResponse>> getMenus(
             @RequestParam(required = false) Long category,
             @RequestParam(required = false) String keyword,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(menuService.getMenus(category, keyword, page, size));
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(defaultValue = "createdAt,DESC") String sort) {
+        if (size > 100) size = 100;
+        return ResponseEntity.ok(menuService.getMenus(category, keyword, page, size, sort));
     }
 
     @GetMapping("/{id}")

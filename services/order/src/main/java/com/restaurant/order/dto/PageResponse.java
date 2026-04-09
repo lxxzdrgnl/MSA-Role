@@ -2,31 +2,16 @@ package com.restaurant.order.dto;
 
 import java.util.List;
 
-public class PageResponse<T> {
-
-    private List<T> content;
-    private int currentPage;
-    private int totalPages;
-    private long totalCount;
-
-    public PageResponse() {}
-
-    public PageResponse(List<T> content, int currentPage, int totalPages, long totalCount) {
-        this.content = content;
-        this.currentPage = currentPage;
-        this.totalPages = totalPages;
-        this.totalCount = totalCount;
+public record PageResponse<T>(
+    List<T> content,
+    int page,
+    int size,
+    long totalElements,
+    int totalPages,
+    String sort
+) {
+    public static <T> PageResponse<T> of(List<T> content, int page, int size, long totalElements, String sort) {
+        int totalPages = size > 0 ? (int) Math.ceil((double) totalElements / size) : 0;
+        return new PageResponse<>(content, page, size, totalElements, totalPages, sort);
     }
-
-    public List<T> getContent() { return content; }
-    public void setContent(List<T> content) { this.content = content; }
-
-    public int getCurrentPage() { return currentPage; }
-    public void setCurrentPage(int currentPage) { this.currentPage = currentPage; }
-
-    public int getTotalPages() { return totalPages; }
-    public void setTotalPages(int totalPages) { this.totalPages = totalPages; }
-
-    public long getTotalCount() { return totalCount; }
-    public void setTotalCount(long totalCount) { this.totalCount = totalCount; }
 }
