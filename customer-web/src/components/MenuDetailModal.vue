@@ -60,7 +60,7 @@
           <div v-else class="rv-list">
             <div v-for="rv in reviews" :key="rv.id" class="rv-card">
               <div class="rv-card-top">
-                <span class="rv-user">사용자{{ rv.userId }}</span>
+                <span class="rv-user">{{ rv.nickname || '익명' }}</span>
                 <span class="rv-stars">{{ '★'.repeat(rv.rating) }}{{ '☆'.repeat(5 - rv.rating) }}</span>
                 <span class="rv-date">{{ fmtDate(rv.createdAt) }}</span>
               </div>
@@ -77,20 +77,19 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api'
+import { useFormatting } from '../composables/useFormatting'
+import { categoryEmoji } from '../constants'
 
 const props = defineProps({ menu: Object })
 defineEmits(['close', 'add-to-cart'])
 
-const EMOJI_MAP = { '한식':'🥢','중식':'🥡','일식':'🍣','분식':'🍢','음료':'🧋','디저트':'🍰' }
-const emoji = EMOJI_MAP[props.menu.categoryName] || '🍴'
+const { formatPrice, formatDateShort: fmtDate } = useFormatting()
+const emoji = categoryEmoji(props.menu.categoryName)
 
 const reviews = ref([])
 const summary = ref(null)
 const aiSummary = ref('')
 const reviewsLoading = ref(true)
-
-const formatPrice = p => Number(p).toLocaleString('ko-KR')
-const fmtDate = s => s ? new Date(s).toLocaleString('ko-KR', { month:'2-digit', day:'2-digit' }) : ''
 
 onMounted(async () => {
   try {
@@ -107,8 +106,6 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:300; }
-
 .mdm {
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -142,10 +139,6 @@ onMounted(async () => {
 .mdm-img { width:100%; height:100%; object-fit:cover; }
 .mdm-img-empty { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-size:56px; opacity:.3; }
 .mdm-badges { position:absolute; top:10px; left:10px; display:flex; gap:5px; }
-.pill { padding:3px 10px; border-radius:99px; font-size:10px; font-weight:700; backdrop-filter:blur(8px); }
-.pill-best { background:rgba(212,134,60,.9); color:#fff; }
-.pill-sold { background:rgba(0,0,0,.65); color:#999; }
-
 .mdm-info { padding: 20px 22px 24px; }
 .mdm-cat { font-size:10px; color:var(--text-muted); font-weight:600; letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px; }
 .mdm-name { font-size:22px; font-weight:700; color:var(--text-primary); margin-bottom:6px; }
@@ -155,8 +148,6 @@ onMounted(async () => {
 .meta-item { font-size:12px; color:var(--text-muted); }
 
 .mdm-tags { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:16px; }
-.chip { background:var(--bg-subtle); border-radius:4px; padding:2px 7px; font-size:10px; color:var(--text-muted); }
-
 .mdm-price-row { display:flex; align-items:center; justify-content:space-between; padding-top:16px; border-top:1px solid var(--border); }
 .mdm-price { font-size:22px; font-weight:700; color:var(--accent-soft); }
 .mdm-price small { font-size:13px; font-weight:400; opacity:.7; margin-left:1px; }

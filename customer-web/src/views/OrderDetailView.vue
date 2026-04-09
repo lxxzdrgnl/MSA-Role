@@ -98,6 +98,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
+import { useFormatting } from '../composables/useFormatting'
+import { REVIEW_KEYWORDS } from '../constants'
+
+const { formatPrice, formatDate } = useFormatting()
 
 const route = useRoute()
 const order = ref(null)
@@ -105,7 +109,7 @@ const loading = ref(true)
 const wsMessage = ref('')
 let ws = null
 
-const STATUS = {
+const STATUS_DETAIL = {
   PENDING:   { label: '접수 대기',  icon: '⏳', desc: '주문이 접수되길 기다리고 있어요' },
   ACCEPTED:  { label: '주문 수락',  icon: '✓',  desc: '주문이 접수되었습니다' },
   COOKING:   { label: '조리 중',    icon: '🔥', desc: '셰프가 조리하고 있어요' },
@@ -114,9 +118,9 @@ const STATUS = {
   CANCELLED: { label: '취소됨',     icon: '✕',  desc: '주문이 취소되었습니다' },
 }
 
-const statusLabel = computed(() => STATUS[order.value?.status]?.label || order.value?.status)
-const statusIcon = computed(() => STATUS[order.value?.status]?.icon || '?')
-const statusDesc = computed(() => STATUS[order.value?.status]?.desc || '')
+const statusLabel = computed(() => STATUS_DETAIL[order.value?.status]?.label || order.value?.status)
+const statusIcon = computed(() => STATUS_DETAIL[order.value?.status]?.icon || '?')
+const statusDesc = computed(() => STATUS_DETAIL[order.value?.status]?.desc || '')
 
 // ── Review ──
 const reviewRating = ref(0)
@@ -125,7 +129,7 @@ const reviewKws = ref([])
 const draftLoading = ref(false)
 const submitting = ref(false)
 const reviewSubmitted = ref(false)
-const kwOptions = ['맛있다', '양이 많다', '빠르다', '친절하다', '국물이 좋다', '매콤하다', '신선하다', '가성비 좋다']
+const kwOptions = REVIEW_KEYWORDS
 
 function toggleKw(kw) {
   const i = reviewKws.value.indexOf(kw)
@@ -150,11 +154,6 @@ async function submitReview() {
   } catch {} finally { submitting.value = false }
 }
 
-function formatPrice(p) { return Number(p).toLocaleString('ko-KR') }
-function formatDate(s) {
-  if (!s) return ''
-  return new Date(s).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
 
 async function loadOrder() {
   try {
@@ -165,7 +164,8 @@ async function loadOrder() {
 
 function connectWs() {
   const protocol = location.protocol === 'https:' ? 'wss' : 'ws'
-  const url = `${protocol}://${location.host}/ws/orders/${route.params.id}`
+  const userId = order.value?.userId || route.params.id
+  const url = `${protocol}://${location.host}/ws/orders/${userId}`
   ws = new WebSocket(url)
   ws.onmessage = (event) => {
     try {

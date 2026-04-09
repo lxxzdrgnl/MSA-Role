@@ -64,34 +64,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
+import { useFormatting } from '../composables/useFormatting'
+import { useCart } from '../composables/useCart'
 
 const emit = defineEmits(['cart-updated'])
 const router = useRouter()
-const cart = ref([])
+const { formatPrice } = useFormatting()
+const { cartItems: cart, changeQty, removeItem, clear: clearCart, totalQty: totalItems, totalPrice } = useCart()
 const loading = ref(false)
 const errorMsg = ref('')
-
-onMounted(() => {
-  try { cart.value = JSON.parse(localStorage.getItem('cart') || '[]') } catch { cart.value = [] }
-})
-
-function saveCart() { localStorage.setItem('cart', JSON.stringify(cart.value)); emit('cart-updated') }
-
-const totalPrice = computed(() => cart.value.reduce((s, i) => s + i.price * i.quantity, 0))
-const totalItems = computed(() => cart.value.reduce((s, i) => s + i.quantity, 0))
-
-function formatPrice(p) { return Number(p).toLocaleString('ko-KR') }
-
-function changeQty(item, d) {
-  const n = item.quantity + d
-  if (n <= 0) { removeItem(item); return }
-  item.quantity = n; saveCart()
-}
-function removeItem(item) { cart.value = cart.value.filter(i => i.menuId !== item.menuId); saveCart() }
-function clearCart() { cart.value = []; saveCart() }
 
 async function placeOrder() {
   if (!cart.value.length) return

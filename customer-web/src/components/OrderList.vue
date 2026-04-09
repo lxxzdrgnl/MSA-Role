@@ -20,11 +20,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api'
+import { useFormatting } from '../composables/useFormatting'
+import { STATUS_LABELS } from '../constants'
 defineEmits(['select'])
 const orders = ref([]), loading = ref(true)
-const SL = { PENDING:'접수 대기', ACCEPTED:'주문 수락', COOKING:'조리 중', READY:'준비 완료', COMPLETED:'완료', CANCELLED:'취소됨' }
-const fmtPrice = p => Number(p).toLocaleString('ko-KR')
-const fmtDate = s => s ? new Date(s).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''
+const SL = STATUS_LABELS
+const { formatPrice: fmtPrice, formatDate: fmtDate } = useFormatting()
 onMounted(async () => { try { const r = await api.get('/orders',{params:{page:0,size:20}}); orders.value = Array.isArray(r.data)?r.data:(r.data.content||[]) } catch {} finally { loading.value=false } })
 </script>
 <style scoped>
@@ -33,8 +34,8 @@ onMounted(async () => { try { const r = await api.get('/orders',{params:{page:0,
 .oc:hover { border-color:var(--border-hover); box-shadow:var(--shadow-glow); transform:translateY(-2px); }
 .oc-top { display:flex; justify-content:space-between; margin-bottom:6px; }
 .oc-id { font-size:12px; color:var(--text-muted); font-weight:600; }
-.oc-st { font-size:10px; font-weight:700; padding:2px 10px; border-radius:99px; }
-.st-pending{background:rgba(251,191,36,.12);color:#fbbf24}.st-accepted{background:rgba(96,165,250,.12);color:#60a5fa}.st-cooking{background:rgba(251,146,60,.12);color:#fb923c}.st-ready{background:rgba(74,222,128,.12);color:#4ade80}.st-completed{background:rgba(156,163,175,.1);color:#9ca3af}.st-cancelled{background:rgba(248,113,113,.1);color:#f87171}
+.oc-st { font-size:10px; font-weight:600; padding:2px 10px; border-radius:99px; letter-spacing:0.02em; }
+.st-pending{background:rgba(255,255,255,.06);color:var(--text-secondary)}.st-accepted{background:rgba(212,134,60,.1);color:var(--accent-soft)}.st-cooking{background:rgba(212,134,60,.15);color:var(--accent-soft)}.st-ready{background:rgba(212,134,60,.1);color:var(--accent)}.st-completed{background:rgba(255,255,255,.04);color:var(--text-muted)}.st-cancelled{background:rgba(255,255,255,.04);color:var(--text-muted);text-decoration:line-through}
 .oc-date { font-size:11px; color:var(--text-muted); margin-bottom:8px; }
 .oc-items { font-size:12px; color:var(--text-secondary); margin-bottom:10px; }
 .oc-more { color:var(--text-muted); font-size:10px; }

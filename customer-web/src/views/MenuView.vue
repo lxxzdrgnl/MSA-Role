@@ -27,6 +27,10 @@
       </nav>
 
       <div class="sidebar-footer">
+        <button class="sidebar-link" @click="showProfileModal = true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          프로필
+        </button>
         <button class="sidebar-link" :class="{ 'link-active': currentTab === 'orders' }" @click="currentTab = currentTab === 'orders' ? 'menu' : 'orders'">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
           주문내역
@@ -60,20 +64,29 @@
         </div>
       </header>
 
-      <!-- Skeleton -->
-      <div v-if="loading" class="menu-grid">
-        <div v-for="i in 8" :key="i" class="skeleton-card">
-          <div class="skeleton" style="height:180px;border-radius:var(--radius-lg) var(--radius-lg) 0 0"></div>
-          <div style="padding:16px;display:flex;flex-direction:column;gap:10px">
-            <div class="skeleton" style="height:16px;width:65%"></div>
-            <div class="skeleton" style="height:12px;width:90%"></div>
-            <div class="skeleton" style="height:12px;width:50%"></div>
+      <!-- Skeleton (initial load) -->
+      <div v-if="loading && menus.length === 0" class="menu-grid">
+        <div v-for="i in 8" :key="i" class="skeleton-card" :style="`animation-delay:${i * 0.05}s`">
+          <div class="skel shimmer" style="height:180px;border-radius:var(--radius-lg) var(--radius-lg) 0 0"></div>
+          <div style="padding:14px 16px 16px;display:flex;flex-direction:column;gap:6px">
+            <div class="skel shimmer" style="height:10px;width:40%;border-radius:3px"></div>
+            <div class="skel shimmer" style="height:16px;width:70%;border-radius:4px"></div>
+            <div class="skel shimmer" style="height:12px;width:95%;border-radius:3px"></div>
+            <div class="skel shimmer" style="height:12px;width:60%;border-radius:3px"></div>
+            <div style="display:flex;gap:4px;margin-top:4px">
+              <div class="skel shimmer" style="height:18px;width:44px;border-radius:4px"></div>
+              <div class="skel shimmer" style="height:18px;width:36px;border-radius:4px"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+              <div class="skel shimmer" style="height:18px;width:80px;border-radius:4px"></div>
+              <div class="skel shimmer" style="height:32px;width:56px;border-radius:var(--radius-sm)"></div>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Grid -->
-      <div v-else-if="menus.length > 0" class="menu-grid">
+      <div v-else-if="menus.length > 0" class="menu-grid" :class="{ 'grid-fade-out': gridFading }">
         <div v-for="(menu, i) in menus" :key="menu.id" class="menu-card fade-up" :class="{ 'sold-out': menu.isSoldOut }" :style="`animation-delay:${i * 0.03}s`" @click="openMenuDetail(menu)">
           <div class="card-visual">
             <img v-if="menu.imageUrl" :src="menu.imageUrl" :alt="menu.name" class="card-img" @error="e => e.target.style.display='none'" />
@@ -98,7 +111,7 @@
         </div>
       </div>
 
-      <div v-else class="empty"><span class="empty-glyph">∅</span><span>메뉴가 없습니다</span></div>
+      <div v-else-if="!loading" class="empty"><span class="empty-glyph">∅</span><span>메뉴가 없습니다</span></div>
       </template>
     </main>
 
@@ -113,58 +126,7 @@
     </transition>
 
     <!-- ═══ RIGHT: AI Chat Panel ═══ -->
-    <aside class="chat-panel" :class="{ collapsed: !chatOpen }">
-      <button class="chat-toggle" @click="chatOpen = !chatOpen">
-        <svg v-if="chatOpen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="9,18 15,12 9,6"/></svg>
-        <template v-else><span class="toggle-spark">✦</span><span class="toggle-label">AI</span></template>
-      </button>
-
-      <div v-show="chatOpen" class="chat-inner">
-        <div class="chat-header">
-          <div class="chat-badge">AI POWERED</div>
-          <h2 class="display chat-title">Recommend</h2>
-          <p class="chat-sub">원하는 분위기나 맛을 알려주세요</p>
-        </div>
-
-        <div class="chat-messages" ref="chatScroll">
-          <div v-if="chatHistory.length === 0" class="chat-welcome">
-            <p>무엇을 드시고 싶으세요?</p>
-            <div class="quick-chips">
-              <button v-for="q in quickQueries" :key="q" class="quick-chip" @click="quickAsk(q)">{{ q }}</button>
-            </div>
-          </div>
-          <div v-for="(msg, i) in chatHistory" :key="i" class="chat-msg" :class="msg.role">
-            <div class="msg-bubble">
-              <template v-if="msg.menus">
-                <div class="msg-text">{{ msg.text }}</div>
-                <div class="rec-cards-inline">
-                  <div v-for="m in msg.menus" :key="m.id" class="rec-inline" @click="openMenuDetail(m)">
-                    <img v-if="m.imageUrl" :src="m.imageUrl" class="rec-thumb" @error="e => e.target.style.display='none'" />
-                    <div v-else class="rec-thumb-empty">{{ categoryEmoji(m.categoryName) }}</div>
-                    <div class="rec-inline-info">
-                      <span class="rec-inline-name">{{ m.name }}</span>
-                      <span class="rec-inline-price mono">{{ formatPrice(m.price) }}원</span>
-                    </div>
-                    <button class="btn-cart btn-cart-sm" @click.stop="addToCart(m)">담기</button>
-                  </div>
-                </div>
-              </template>
-              <template v-else>{{ msg.text }}</template>
-            </div>
-          </div>
-          <div v-if="aiLoading" class="chat-msg assistant">
-            <div class="msg-bubble"><span class="spinner"></span> 추천 중...</div>
-          </div>
-        </div>
-
-        <form class="chat-input-area" @submit.prevent="getRecommendations">
-          <input v-model="aiQuery" class="chat-field" placeholder="매운 거 추천해줘..." :disabled="aiLoading" />
-          <button type="submit" class="chat-send" :disabled="aiLoading || !aiQuery.trim()">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22,2 15,22 11,13 2,9"/></svg>
-          </button>
-        </form>
-      </div>
-    </aside>
+    <ChatPanel :menus="menus" @open-menu="openMenuDetail" @add-to-cart="addToCart" />
 
     <!-- ═══ BOTTOM: Cart Bar ═══ -->
     <transition name="bar-slide">
@@ -222,6 +184,11 @@
       </div>
     </transition>
 
+    <!-- Profile Modal -->
+    <transition name="modal-fade">
+      <ProfileModal v-if="showProfileModal" @close="showProfileModal = false" @toast="showToast" />
+    </transition>
+
     <!-- Toast -->
     <transition name="toast-pop">
       <div v-if="toastMsg" class="toast"><span class="toast-check">✓</span> {{ toastMsg }}</div>
@@ -230,15 +197,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import OrderList from '../components/OrderList.vue'
 import OrderDetailModal from '../components/OrderDetailModal.vue'
 import MenuDetailModal from '../components/MenuDetailModal.vue'
+import ChatPanel from '../components/ChatPanel.vue'
+import ProfileModal from '../components/ProfileModal.vue'
+import { useFormatting } from '../composables/useFormatting'
+import { useCart } from '../composables/useCart'
+import { categoryEmoji } from '../constants'
 
 const router = useRouter()
 const emit = defineEmits(['cart-updated', 'logout'])
+const { formatPrice } = useFormatting()
+const cart = useCart()
 
 // ── Tab ──
 const currentTab = ref('menu')
@@ -253,33 +227,21 @@ const categories = ref([])
 const selectedCategory = ref(null)
 const searchQuery = ref('')
 const loading = ref(false)
+const gridFading = ref(false)
 const toastMsg = ref('')
 let toastTimer = null
 
-// ── AI Chat ──
-const chatOpen = ref(true)
-const aiQuery = ref('')
-const aiLoading = ref(false)
-const chatHistory = ref([])
-const chatScroll = ref(null)
-const quickQueries = ['매운 거 추천', '가벼운 식사', '인기 메뉴', '음료 추천']
+// ── Profile ──
+const showProfileModal = ref(false)
 
 // ── Cart ──
-const cartItems = ref([])
+const cartItems = cart.cartItems
 const showOrderModal = ref(false)
 const ordering = ref(false)
 const orderError = ref('')
-
-function refreshCart() {
-  try { cartItems.value = JSON.parse(localStorage.getItem('cart') || '[]') } catch { cartItems.value = [] }
-}
-const cartTotalQty = computed(() => cartItems.value.reduce((s, i) => s + i.quantity, 0))
-const cartTotalPrice = computed(() => cartItems.value.reduce((s, i) => s + i.price * i.quantity, 0))
-const cartItemNames = computed(() => {
-  const names = cartItems.value.map(i => i.name)
-  if (names.length <= 2) return names.join(', ')
-  return `${names[0]} 외 ${names.length - 1}건`
-})
+const cartTotalQty = cart.totalQty
+const cartTotalPrice = cart.totalPrice
+const cartItemNames = cart.itemNames
 
 const totalCount = computed(() => menus.value.length)
 const currentCategoryName = computed(() => {
@@ -287,10 +249,6 @@ const currentCategoryName = computed(() => {
   const cat = categories.value.find(c => c.id === selectedCategory.value)
   return cat ? cat.name : 'Menu'
 })
-
-const EMOJI_MAP = { '한식': '🥢', '중식': '🥡', '일식': '🍣', '분식': '🍢', '음료': '🧋', '디저트': '🍰' }
-function categoryEmoji(name) { return EMOJI_MAP[name] || '🍴' }
-function formatPrice(p) { return Number(p).toLocaleString('ko-KR') }
 
 // ── Wait times ──
 const waitTimes = ref({})
@@ -305,14 +263,25 @@ async function loadWaitTimes() {
 }
 
 // ── Load ──
-onMounted(() => { loadCategories(); loadMenus(); refreshCart() })
+onMounted(() => { loadCategories(); loadMenus() })
 
 async function loadCategories() {
   try { categories.value = (await api.get('/menus/categories')).data } catch {}
 }
 
+const FADE_MS = 150
+
+function fadeOutGrid() {
+  if (menus.value.length === 0) return Promise.resolve()
+  gridFading.value = true
+  return new Promise(resolve => setTimeout(resolve, FADE_MS))
+}
+
 async function loadMenus() {
-  loading.value = true
+  const isInitial = menus.value.length === 0
+  if (isInitial) loading.value = true
+  else await fadeOutGrid()
+
   try {
     const params = { page: 0, size: 50 }
     if (selectedCategory.value !== null) params.category = selectedCategory.value
@@ -320,7 +289,7 @@ async function loadMenus() {
     const r = await api.get('/menus', { params })
     menus.value = r.data.content || r.data
     loadWaitTimes()
-  } catch {} finally { loading.value = false }
+  } catch {} finally { loading.value = false; gridFading.value = false }
 }
 
 function selectCategory(id) { selectedCategory.value = id; currentTab.value = 'menu'; loadMenus() }
@@ -329,26 +298,14 @@ let searchTimer = null
 function handleSearch() { clearTimeout(searchTimer); searchTimer = setTimeout(loadMenus, 400) }
 
 // ── Cart actions ──
-function getCart() { try { return JSON.parse(localStorage.getItem('cart') || '[]') } catch { return [] } }
-function saveCart(cart) { localStorage.setItem('cart', JSON.stringify(cart)); refreshCart(); emit('cart-updated') }
-
 function addToCart(menu) {
-  if (menu.isSoldOut) return
-  const cart = getCart()
-  const idx = cart.findIndex(i => i.menuId === (menu.menuId || menu.id))
-  idx >= 0 ? cart[idx].quantity++ : cart.push({ menuId: menu.menuId || menu.id, name: menu.name, price: menu.price, quantity: 1 })
-  saveCart(cart)
+  cart.addItem(menu)
   showToast(`${menu.name} 담았어요`)
 }
 
 function changeQty(item, delta) {
-  const cart = getCart()
-  const idx = cart.findIndex(i => i.menuId === item.menuId)
-  if (idx < 0) return
-  cart[idx].quantity += delta
-  if (cart[idx].quantity <= 0) cart.splice(idx, 1)
-  saveCart(cart)
-  if (cart.length === 0) showOrderModal.value = false
+  cart.changeQty(item, delta)
+  if (cartItems.value.length === 0) showOrderModal.value = false
 }
 
 function showToast(msg) {
@@ -363,9 +320,8 @@ async function placeOrder() {
   orderError.value = ''
   try {
     const items = cartItems.value.map(i => ({ menuId: i.menuId, quantity: i.quantity }))
-    const orderRes = await api.post('/orders', { items })
-    localStorage.removeItem('cart')
-    refreshCart()
+    await api.post('/orders', { items })
+    cart.clear()
     showOrderModal.value = false
     showToast('주문이 완료되었습니다!')
   } catch (e) {
@@ -373,69 +329,6 @@ async function placeOrder() {
   } finally { ordering.value = false }
 }
 
-// ── AI ──
-function quickAsk(q) { aiQuery.value = q; getRecommendations() }
-
-async function getRecommendations() {
-  if (!aiQuery.value.trim()) return
-  const userMsg = aiQuery.value.trim()
-  chatHistory.value.push({ role: 'user', text: userMsg })
-  aiQuery.value = ''
-  aiLoading.value = true
-
-  await nextTick()
-  scrollChat()
-
-  try {
-    const r = await api.post('/recommendations/chat', { message: userMsg })
-    const data = r.data
-
-    // API returns { menu_ids: [...], reason: "...", keywords: [...] }
-    const menuIds = data.menu_ids || []
-    const reason = data.reason || ''
-
-    if (menuIds.length > 0) {
-      // Match menu_ids to loaded menus
-      const matched = menuIds
-        .map(id => menus.value.find(m => m.id === id))
-        .filter(Boolean)
-
-      if (matched.length > 0) {
-        chatHistory.value.push({
-          role: 'assistant',
-          text: reason || '이런 메뉴는 어떨까요?',
-          menus: matched
-        })
-      } else {
-        // menus not in current filtered view, fetch individually
-        const fetched = []
-        for (const id of menuIds) {
-          try {
-            const res = await api.get(`/menus/${id}`)
-            fetched.push(res.data)
-          } catch {}
-        }
-        if (fetched.length > 0) {
-          chatHistory.value.push({ role: 'assistant', text: reason || '추천 메뉴입니다!', menus: fetched })
-        } else {
-          chatHistory.value.push({ role: 'assistant', text: reason || '추천할 메뉴를 찾지 못했어요.' })
-        }
-      }
-    } else {
-      chatHistory.value.push({ role: 'assistant', text: reason || '추천 결과가 없어요. 다른 키워드를 시도해보세요.' })
-    }
-  } catch (e) {
-    chatHistory.value.push({ role: 'assistant', text: e.response?.data?.message || 'AI 추천 중 오류가 발생했습니다.' })
-  } finally {
-    aiLoading.value = false
-    await nextTick()
-    scrollChat()
-  }
-}
-
-function scrollChat() {
-  if (chatScroll.value) chatScroll.value.scrollTop = chatScroll.value.scrollHeight
-}
 </script>
 
 <style scoped>
@@ -481,6 +374,7 @@ function scrollChat() {
 .cat-count { margin-left: auto; font-size: 11px; color: var(--text-muted); background: var(--bg-subtle); padding: 1px 7px; border-radius: 99px; }
 
 .sidebar-footer { padding: 12px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 2px; }
+
 .sidebar-link { display: flex; align-items: center; gap: 8px; padding: 8px 12px; font-size: 13px; color: var(--text-muted); border-radius: var(--radius-sm); transition: var(--transition); text-decoration: none; width: 100%; text-align: left; }
 .sidebar-link:hover { color: var(--text-primary); background: var(--bg-hover); }
 .sidebar-link.link-active { color: var(--accent-soft); background: var(--accent-bg); }
@@ -492,22 +386,24 @@ function scrollChat() {
 .main-subtitle { font-size: 13px; color: var(--text-muted); }
 
 .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 20px; }
-.skeleton-card { border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-card); border: 1px solid var(--border); }
+.skeleton-card { border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-card); border: 1px solid var(--border); animation: skeletonFadeIn 0.3s ease both; }
+.skel { background: var(--bg-subtle); }
+.shimmer { animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes skeletonFadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.menu-grid { transition: opacity 0.15s ease-out, transform 0.15s ease-out; }
+.grid-fade-out { opacity: 0; transform: translateY(4px); pointer-events: none; }
 
 .menu-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; transition: var(--transition); }
 .menu-card:hover { border-color: var(--border-hover); box-shadow: var(--shadow-glow); transform: translateY(-3px); }
 .menu-card.sold-out { opacity: 0.45; pointer-events: none; }
 
-.card-visual { position: relative; height: 180px; background: var(--bg-subtle); overflow: hidden; }
-.card-img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; }
-.menu-card:hover .card-img { transform: scale(1.06); }
+.card-visual { position: relative; height: 180px; background: var(--bg-subtle); overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.card-img { width: 100%; height: 100%; object-fit: cover; }
 .card-img-empty { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 42px; opacity: 0.35; }
 
 .card-badges { position: absolute; top: 10px; left: 10px; display: flex; gap: 5px; }
-.pill { padding: 3px 10px; border-radius: 99px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; backdrop-filter: blur(8px); }
-.pill-best { background: rgba(212,134,60,0.9); color: #fff; box-shadow: 0 2px 8px rgba(212,134,60,0.5); }
-.pill-sold { background: rgba(0,0,0,0.65); color: #999; }
-.pill-wait { background: rgba(212,134,60,0.75); color: #fff; font-size: 9px; }
 .card-spicy { position: absolute; bottom: 8px; right: 8px; font-size: 12px; }
 
 .card-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 4px; }
@@ -515,7 +411,6 @@ function scrollChat() {
 .card-name { font-size: 15px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
 .card-desc { font-size: 12px; color: var(--text-secondary); line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
-.chip { background: var(--bg-subtle); border-radius: 4px; padding: 2px 7px; font-size: 10px; color: var(--text-muted); }
 
 .card-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
 .card-price { font-size: 17px; font-weight: 700; color: var(--accent-soft); }
@@ -528,54 +423,6 @@ function scrollChat() {
 
 .empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 80px 24px; gap: 12px; color: var(--text-muted); }
 .empty-glyph { font-size: 48px; opacity: 0.3; font-family: 'Playfair Display', serif; }
-
-/* ═══ RIGHT CHAT ═══ */
-.chat-panel { background: var(--bg-elevated); border-left: 1px solid var(--border); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow: hidden; transition: var(--transition); }
-.chat-panel.collapsed { background: var(--bg-base); }
-
-.chat-toggle { position: absolute; top: 16px; left: -16px; width: 32px; height: 32px; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 99px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary); z-index: 10; transition: var(--transition); box-shadow: 0 2px 8px rgba(0,0,0,0.3); cursor: pointer; }
-.chat-toggle:hover { color: var(--accent); border-color: var(--border-hover); }
-.collapsed .chat-toggle { position: static; width: 100%; height: auto; border-radius: 0; border: none; border-bottom: 1px solid var(--border); flex-direction: column; gap: 6px; padding: 16px 0; background: transparent; }
-.toggle-spark { font-size: 18px; color: var(--accent); }
-.toggle-label { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; color: var(--text-muted); }
-
-.chat-inner { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
-.chat-header { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); }
-.chat-badge { font-size: 9px; font-weight: 700; color: var(--accent); letter-spacing: 0.16em; margin-bottom: 4px; }
-.chat-title { font-size: 28px; color: var(--text-primary); margin: 0; }
-.chat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
-
-.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-
-.chat-welcome { text-align: center; padding: 32px 0 16px; color: var(--text-secondary); font-size: 14px; }
-.quick-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 16px; }
-.quick-chip { background: var(--bg-card); border: 1px solid var(--border); border-radius: 99px; padding: 6px 14px; font-size: 12px; color: var(--text-secondary); transition: var(--transition); font-family: inherit; cursor: pointer; }
-.quick-chip:hover { border-color: var(--accent); color: var(--accent-soft); background: var(--accent-bg); }
-
-.chat-msg { display: flex; }
-.chat-msg.user { justify-content: flex-end; }
-.chat-msg.assistant { justify-content: flex-start; }
-.msg-bubble { max-width: 90%; padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; line-height: 1.5; display: flex; flex-direction: column; gap: 8px; }
-.user .msg-bubble { background: var(--accent); color: #fff; border-bottom-right-radius: 4px; }
-.assistant .msg-bubble { background: var(--bg-card); border: 1px solid var(--border); color: var(--text-primary); border-bottom-left-radius: 4px; }
-.msg-text { margin-bottom: 4px; }
-
-.rec-cards-inline { display: flex; flex-direction: column; gap: 6px; }
-.rec-inline { display: flex; align-items: center; gap: 10px; background: var(--bg-subtle); border-radius: var(--radius-sm); padding: 8px 10px; cursor: pointer; transition: var(--transition); }
-.rec-inline:hover { background: var(--bg-hover); }
-.rec-thumb { width: 40px; height: 40px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
-.rec-thumb-empty { width: 40px; height: 40px; border-radius: var(--radius-sm); background: var(--bg-card); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; opacity: 0.5; }
-.rec-inline-info { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.rec-inline-name { font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.rec-inline-price { font-size: 11px; color: var(--accent-soft); }
-
-.chat-input-area { padding: 12px 16px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; }
-.chat-field { flex: 1; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); font-family: inherit; font-size: 13px; outline: none; transition: var(--transition); }
-.chat-field::placeholder { color: var(--text-muted); }
-.chat-field:focus { border-color: var(--accent); }
-.chat-send { width: 40px; height: 40px; background: var(--accent); border: none; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; color: #fff; transition: var(--transition); flex-shrink: 0; cursor: pointer; }
-.chat-send:hover:not(:disabled) { background: var(--accent-soft); }
-.chat-send:disabled { opacity: 0.35; }
 
 /* ═══ CART BAR ═══ */
 .cart-bar { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; z-index: 200; padding: 0 24px; pointer-events: none; }
@@ -593,13 +440,9 @@ function scrollChat() {
 @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══ ORDER MODAL ═══ */
-.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 300; }
 .order-modal { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-xl); width: 440px; max-height: 80vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
 .order-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 16px; border-bottom: 1px solid var(--border); }
 .order-modal-title { font-size: 32px; color: var(--text-primary); margin: 0; }
-.modal-x { width: 32px; height: 32px; border-radius: 99px; background: var(--bg-subtle); border: 1px solid var(--border); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; font-size: 14px; transition: var(--transition); cursor: pointer; }
-.modal-x:hover { color: var(--text-primary); border-color: var(--border-hover); }
-
 .order-items { padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
 .order-item { display: flex; align-items: center; justify-content: space-between; }
 .order-item-info { display: flex; flex-direction: column; gap: 2px; }
@@ -617,9 +460,6 @@ function scrollChat() {
 .btn-place-order { width: calc(100% - 48px); margin: 0 24px 24px; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px; }
 .btn-place-order:hover:not(:disabled) { background: var(--accent-soft); box-shadow: 0 4px 20px rgba(212,134,60,0.4); }
 .btn-place-order:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.modal-fade-enter-active, .modal-fade-leave-active { transition: opacity 0.2s; }
-.modal-fade-enter-from, .modal-fade-leave-to { opacity: 0; }
 
 /* ═══ TOAST ═══ */
 .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(26,25,24,0.95); border: 1px solid var(--border); backdrop-filter: blur(12px); color: var(--text-primary); padding: 10px 20px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 500; display: flex; align-items: center; gap: 7px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }

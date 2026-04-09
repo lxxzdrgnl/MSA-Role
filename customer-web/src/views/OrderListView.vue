@@ -67,6 +67,10 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
+import { useFormatting } from '../composables/useFormatting'
+import { STATUS_LABELS } from '../constants'
+
+const { formatPrice, formatDate } = useFormatting()
 
 const router = useRouter()
 const orders = ref([])
@@ -88,17 +92,7 @@ async function loadPage(page) {
 }
 
 function goToDetail(id) { router.push(`/orders/${id}`) }
-function formatPrice(p) { return Number(p).toLocaleString('ko-KR') }
-function formatDate(s) {
-  if (!s) return ''
-  return new Date(s).toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
-}
-
-const STATUS_MAP = {
-  PENDING: '접수 대기', ACCEPTED: '주문 수락', COOKING: '조리 중',
-  READY: '준비 완료', COMPLETED: '완료', CANCELLED: '취소됨'
-}
-function statusLabel(s) { return STATUS_MAP[s] || s || '-' }
+function statusLabel(s) { return STATUS_LABELS[s] || s || '-' }
 </script>
 
 <style scoped>

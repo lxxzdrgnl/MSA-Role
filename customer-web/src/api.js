@@ -1,4 +1,7 @@
 import axios from 'axios'
+import { useAuth } from './composables/useAuth'
+
+const { getToken, logout } = useAuth()
 
 const api = axios.create({
   baseURL: '/api',
@@ -8,7 +11,7 @@ const api = axios.create({
 // Request interceptor: attach JWT
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token')
+    const token = getToken()
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`
     }
@@ -23,10 +26,8 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       const url = error.config?.url || ''
-      // Only force logout if a token was sent but rejected
-      if (localStorage.getItem('token') && !url.includes('/auth/')) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('userRole')
+      if (getToken() && !url.includes('/auth/')) {
+        logout()
         window.location.href = '/login'
       }
     }

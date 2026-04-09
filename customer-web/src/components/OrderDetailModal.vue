@@ -84,10 +84,13 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
 import api from '../api'
+import { useFormatting } from '../composables/useFormatting'
+import { REVIEW_KEYWORDS } from '../constants'
 
 const props = defineProps({ orderId: Number })
 const emit = defineEmits(['close'])
 
+const { formatPrice: fmtPrice, formatDate: fmtDate } = useFormatting()
 const order = ref(null), loading = ref(true), wsMsg = ref('')
 let ws = null
 
@@ -99,15 +102,13 @@ const ST = {
   COMPLETED:{label:'완료',icon:'✓',desc:'수령 완료'},
   CANCELLED:{label:'취소됨',icon:'✕',desc:'주문이 취소되었습니다'},
 }
-const fmtPrice = p => Number(p).toLocaleString('ko-KR')
-const fmtDate = s => s ? new Date(s).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : ''
 
 // Review
 const existingReview = ref(null)
 const existingReviews = ref([])
 const editing = ref(false)
 const rvRating = ref(0), rvText = ref(''), rvKws = ref([]), draftL = ref(false), rvSubmitting = ref(false)
-const KW = ['맛있다','양이 많다','빠르다','국물이 좋다','매콤하다','신선하다','가성비 좋다']
+const KW = REVIEW_KEYWORDS
 const customKw = ref('')
 const customKws = ref([])
 function addCustomKw() {
@@ -184,20 +185,18 @@ onMounted(async () => {
   try { order.value = (await api.get(`/orders/${props.orderId}`)).data } catch {} finally { loading.value = false }
   loadExistingReview()
   const proto = location.protocol==='https:'?'wss':'ws'
-  ws = new WebSocket(`${proto}://${location.host}/ws/orders/${props.orderId}`)
+  const userId = order.value?.userId || props.orderId
+  ws = new WebSocket(`${proto}://${location.host}/ws/orders/${userId}`)
   ws.onmessage = e => { try { const d=JSON.parse(e.data); if(d.status){order.value.status=d.status; wsMsg.value=ST[d.status]?.label||d.status; setTimeout(()=>{wsMsg.value=''},5000)} } catch{} }
 })
 onUnmounted(() => { if(ws) ws.close() })
 </script>
 
 <style scoped>
-.modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:300; }
 .odm { background:var(--bg-elevated); border:1px solid var(--border); border-radius:var(--radius-xl); width:460px; max-height:85vh; overflow-y:auto; box-shadow:0 24px 64px rgba(0,0,0,.6); }
 .odm-head { display:flex; justify-content:space-between; align-items:center; padding:24px 24px 16px; border-bottom:1px solid var(--border); }
 .chat-badge { font-size:9px; font-weight:700; color:var(--accent); letter-spacing:.16em; margin-bottom:2px; }
 .odm-title { font-size:30px; color:var(--text-primary); margin:0; }
-.modal-x { width:32px; height:32px; border-radius:99px; background:var(--bg-subtle); border:1px solid var(--border); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-size:14px; cursor:pointer; transition:var(--transition); }
-.modal-x:hover { color:var(--text-primary); border-color:var(--border-hover); }
 .odm-loading { display:flex; justify-content:center; padding:40px; }
 
 /* Status */
