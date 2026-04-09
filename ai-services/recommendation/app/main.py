@@ -1,10 +1,15 @@
 import asyncio
 import logging
+import time as _time
 
 import httpx
 from fastapi import FastAPI
 
+_BUILD_TIME = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+
 from app.config import settings
+from app.errors import register_error_handlers
+from app.middleware import LoggingMiddleware
 from app.routers import recommendations, embeddings
 from app.schemas import EmbeddingSyncRequest
 from app.services import embedding_service
@@ -18,13 +23,16 @@ app = FastAPI(
     version="1.0.0",
 )
 
+register_error_handlers(app)
+app.add_middleware(LoggingMiddleware)
+
 app.include_router(recommendations.router)
 app.include_router(embeddings.router)
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "UP", "version": "1.0.0", "buildTime": _BUILD_TIME}
 
 
 @app.on_event("startup")

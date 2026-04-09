@@ -1,7 +1,12 @@
 import logging
+import time as _time
 
 from fastapi import FastAPI
 
+_BUILD_TIME = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+
+from app.errors import register_error_handlers
+from app.middleware import LoggingMiddleware
 from app.routers import operations
 
 logging.basicConfig(level=logging.INFO)
@@ -13,9 +18,12 @@ app = FastAPI(
     version="1.0.0",
 )
 
+register_error_handlers(app)
+app.add_middleware(LoggingMiddleware)
+
 app.include_router(operations.router)
 
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "UP", "version": "1.0.0", "buildTime": _BUILD_TIME}
