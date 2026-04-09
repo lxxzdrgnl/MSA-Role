@@ -8,6 +8,12 @@ services:
       - "6380:6379"
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - backend-net
 
@@ -19,12 +25,20 @@ services:
     volumes:
       - auth_data:/data
     environment:
+      - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=docker
       - JWT_SECRET=${JWT_SECRET}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 -O /dev/null http://localhost:8081/api/auth/refresh 2>&1 || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - backend-net
 
@@ -36,10 +50,18 @@ services:
       - menu_data:/data
       - image_data:/data/images
     environment:
+      - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=docker
       - AI_RECOMMENDATION_URL=http://ai-recommendation:8000
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8082/api/menus || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     networks:
       - backend-net
 
@@ -50,11 +72,19 @@ services:
     volumes:
       - order_data:/data
     environment:
+      - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=docker
       - MENU_SERVICE_URL=http://menu-service:8082
       - GATEWAY_URL=http://gateway-service:8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8083/api/orders/active || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - menu-service
+      menu-service:
+        condition: service_healthy
     networks:
       - backend-net
 
@@ -65,13 +95,28 @@ services:
     volumes:
       - review_data:/data
     environment:
+      - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=docker
       - ORDER_SERVICE_URL=http://order-service:8083
       - AI_REVIEW_WRITER_URL=http://ai-review-writer:8000
       - AI_RECOMMENDATION_URL=http://ai-recommendation:8000
       - AI_VALIDATION_URL=http://ai-validation:8000
+      - AUTH_SERVICE_URL=http://auth-service:8081
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8084/api/reviews/summary || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - order-service
+      order-service:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     networks:
       - backend-net
 
@@ -80,6 +125,7 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - TZ=Asia/Seoul
       - SPRING_PROFILES_ACTIVE=docker
       - AUTH_SERVICE_URL=http://auth-service:8081
       - MENU_SERVICE_URL=http://menu-service:8082
@@ -87,11 +133,21 @@ services:
       - REVIEW_SERVICE_URL=http://review-service:8084
       - AI_RECOMMENDATION_URL=http://ai-recommendation:8000
       - AI_OPERATIONS_URL=http://ai-operations:8000
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/menus || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
-      - auth-service
-      - menu-service
-      - order-service
-      - review-service
+      auth-service:
+        condition: service_healthy
+      menu-service:
+        condition: service_healthy
+      order-service:
+        condition: service_healthy
+      review-service:
+        condition: service_healthy
     networks:
       - backend-net
       - frontend-net
@@ -104,8 +160,15 @@ services:
     volumes:
       - chroma_data:/data/chroma
     environment:
+      - TZ=Asia/Seoul
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MENU_SERVICE_URL=http://menu-service:8082
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - backend-net
 
@@ -114,7 +177,14 @@ services:
     ports:
       - "8002:8000"
     environment:
+      - TZ=Asia/Seoul
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - backend-net
 
@@ -123,9 +193,16 @@ services:
     ports:
       - "8003:8000"
     environment:
+      - TZ=Asia/Seoul
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ORDER_SERVICE_URL=http://order-service:8083
       - MENU_SERVICE_URL=http://menu-service:8082
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - backend-net
 
@@ -134,7 +211,14 @@ services:
     ports:
       - "8004:8000"
     environment:
+      - TZ=Asia/Seoul
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     networks:
       - backend-net
 
@@ -144,7 +228,8 @@ services:
     ports:
       - "3000:80"
     depends_on:
-      - gateway-service
+      gateway-service:
+        condition: service_healthy
     networks:
       - frontend-net
 
@@ -153,7 +238,8 @@ services:
     ports:
       - "3001:80"
     depends_on:
-      - gateway-service
+      gateway-service:
+        condition: service_healthy
     networks:
       - frontend-net
 
