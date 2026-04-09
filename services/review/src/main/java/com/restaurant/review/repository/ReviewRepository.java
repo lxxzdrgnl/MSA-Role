@@ -107,6 +107,20 @@ public class ReviewRepository {
         return count != null ? count : 0;
     }
 
+    public List<Review> findByUserId(Long userId, int offset, int limit) {
+        return jdbcTemplate.query(
+                "SELECT * FROM reviews WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                ROW_MAPPER, userId, limit, offset
+        );
+    }
+
+    public long countByUserId(Long userId) {
+        Long count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM reviews WHERE user_id = ?", Long.class, userId
+        );
+        return count != null ? count : 0;
+    }
+
     public void deleteById(Long id) {
         jdbcTemplate.update("DELETE FROM reviews WHERE id = ?", id);
     }

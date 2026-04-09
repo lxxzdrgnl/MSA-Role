@@ -8,6 +8,7 @@ public class ReviewResponse {
 
     private Long id;
     private Long userId;
+    private String nickname;
     private Long orderId;
     private Long menuId;
     private String menuName;
@@ -37,6 +38,9 @@ public class ReviewResponse {
 
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+
+    public String getNickname() { return nickname; }
+    public void setNickname(String nickname) { this.nickname = nickname; }
 
     public Long getOrderId() { return orderId; }
     public void setOrderId(Long orderId) { this.orderId = orderId; }

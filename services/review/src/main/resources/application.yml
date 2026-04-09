@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: review-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
   datasource:
     url: jdbc:sqlite:/data/review.db
     driver-class-name: org.sqlite.JDBC
@@ -11,6 +15,10 @@ spring:
     init:
       mode: always
       schema-locations: classpath:schema.sql
+
+auth:
+  service:
+    url: ${AUTH_SERVICE_URL:http://localhost:8081}
 
 ai:
   review-writer:

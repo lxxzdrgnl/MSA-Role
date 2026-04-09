@@ -6,10 +6,12 @@ import com.restaurant.review.repository.ReviewRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -20,6 +22,7 @@ public class ReviewService {
 
     private final ReviewRepository reviewRepository;
     private final RestTemplate restTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     @Value("${ai.review-writer.url}")
     private String aiReviewWriterUrl;
@@ -30,9 +33,17 @@ public class ReviewService {
     @Value("${ai.validation.url}")
     private String aiValidationUrl;
 
-    public ReviewService(ReviewRepository reviewRepository, RestTemplate restTemplate) {
+    @Value("${auth.service.url:http://localhost:8081}")
+    private String authServiceUrl;
+
+    private static final Duration CACHE_TTL = Duration.ofMinutes(30);
+    private static final String CACHE_PREFIX = "review:summary:";
+
+    public ReviewService(ReviewRepository reviewRepository, RestTemplate restTemplate,
+                         StringRedisTemplate redisTemplate) {
         this.reviewRepository = reviewRepository;
         this.restTemplate = restTemplate;
+        this.redisTemplate = redisTemplate;
     }
 
     public ReviewResponse createReview(Long userId, ReviewCreateRequest request) {
@@ -102,6 +113,33 @@ public class ReviewService {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private Map<Long, String> fetchNicknames(List<ReviewResponse> responses) {
+        try {
+            List<Long> userIds = responses.stream()
+                    .map(ReviewResponse::getUserId)
+                    .distinct()
+                    .collect(Collectors.toList());
+            if (userIds.isEmpty()) return Collections.emptyMap();
+            Map<String, List<Long>> body = Map.of("userIds", userIds);
+            // Auth 서비스 내부 API 직접 호출
+            Map<?, ?> result = restTemplate.postForObject(
+                    authServiceUrl + "/api/auth/nicknames", userIds, Map.class);
+            if (result == null) return Collections.emptyMap();
+            Map<Long, String> map = new HashMap<>();
+            result.forEach((k, v) -> map.put(Long.valueOf(k.toString()), v.toString()));
+            return map;
+        } catch (Exception e) {
+            log.warn("Failed to fetch nicknames from auth service: {}", e.getMessage());
+            return Collections.emptyMap();
+        }
+    }
+
+    private void attachNicknames(List<ReviewResponse> responses) {
+        Map<Long, String> nicknames = fetchNicknames(responses);
+        responses.forEach(r -> r.setNickname(nicknames.getOrDefault(r.getUserId(), "익명")));
+    }
+
     public PageResponse<ReviewResponse> getReviews(Long menuId, int page, int size) {
         int offset = (page - 1) * size;
         List<Review> reviews;
@@ -118,6 +156,7 @@ public class ReviewService {
         List<ReviewResponse> content = reviews.stream()
                 .map(ReviewResponse::from)
                 .collect(Collectors.toList());
+        attachNicknames(content);
 
         int totalPages = (int) Math.ceil((double) totalCount / size);
 
@@ -129,6 +168,17 @@ public class ReviewService {
         List<Review> reviews = reviewRepository.findByOrderId(orderId, offset, size);
         long totalCount = reviewRepository.countByOrderId(orderId);
         List<ReviewResponse> content = reviews.stream().map(ReviewResponse::from).collect(Collectors.toList());
+        attachNicknames(content);
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        return new PageResponse<>(content, page, totalPages, totalCount);
+    }
+
+    public PageResponse<ReviewResponse> getReviewsByUser(Long userId, int page, int size) {
+        int offset = (page - 1) * size;
+        List<Review> reviews = reviewRepository.findByUserId(userId, offset, size);
+        long totalCount = reviewRepository.countByUserId(userId);
+        List<ReviewResponse> content = reviews.stream().map(ReviewResponse::from).collect(Collectors.toList());
+        attachNicknames(content);
         int totalPages = (int) Math.ceil((double) totalCount / size);
         return new PageResponse<>(content, page, totalPages, totalCount);
     }
@@ -187,24 +237,21 @@ public class ReviewService {
         return distribution;
     }
 
-    // AI summary cache: menuId -> { summary, reviewCount, timestamp }
-    private final Map<Long, Map<String, Object>> summaryCache = new java.util.concurrent.ConcurrentHashMap<>();
-    private static final long CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-
     @SuppressWarnings("unchecked")
     public Map<String, Object> getAiReviewSummary(Long menuId) {
         long reviewCount = reviewRepository.countByMenuId(menuId);
+        String cacheKey = CACHE_PREFIX + menuId;
 
-        // Check cache
-        Map<String, Object> cached = summaryCache.get(menuId);
+        // Check Redis cache
+        String cached = redisTemplate.opsForValue().get(cacheKey);
         if (cached != null) {
-            long cachedCount = ((Number) cached.get("cachedReviewCount")).longValue();
-            long cachedTime = ((Number) cached.get("cachedAt")).longValue();
-            // Valid if same review count and within TTL
-            if (cachedCount == reviewCount && System.currentTimeMillis() - cachedTime < CACHE_TTL_MS) {
-                return Map.of("summary", cached.get("summary"), "count", reviewCount);
+            String[] parts = cached.split("\n", 2);
+            long cachedCount = Long.parseLong(parts[0]);
+            if (cachedCount == reviewCount) {
+                return Map.of("summary", parts.length > 1 ? parts[1] : "", "count", reviewCount);
             }
         }
+
         List<Review> reviews = reviewRepository.findRecentByMenuId(menuId, 50);
         if (reviews.size() < 3) {
             return Map.of("summary", "", "count", reviews.size());
@@ -226,12 +273,10 @@ public class ReviewService {
             Map<String, Object> res = restTemplate.postForObject(
                     aiReviewWriterUrl + "/reviews/summarize", req, Map.class);
             String summary = res != null ? (String) res.getOrDefault("summary_text", "") : "";
-            // Cache it
-            Map<String, Object> cacheEntry = new HashMap<>();
-            cacheEntry.put("summary", summary);
-            cacheEntry.put("cachedReviewCount", reviewCount);
-            cacheEntry.put("cachedAt", System.currentTimeMillis());
-            summaryCache.put(menuId, cacheEntry);
+
+            // Cache to Redis (reviewCount + summary, 30min TTL)
+            redisTemplate.opsForValue().set(cacheKey, reviewCount + "\n" + summary, CACHE_TTL);
+
             return Map.of("summary", summary, "count", reviews.size());
         } catch (Exception e) {
             log.warn("AI review summary failed: {}", e.getMessage());

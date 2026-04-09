@@ -63,6 +63,14 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getReviewsByOrder(orderId, page, size));
     }
 
+    @GetMapping("/my")
+    public ResponseEntity<PageResponse<ReviewResponse>> getMyReviews(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(reviewService.getReviewsByUser(userId, page, size));
+    }
+
     @GetMapping("/ai-summary")
     public ResponseEntity<java.util.Map<String, Object>> getAiSummary(@RequestParam Long menuId) {
         return ResponseEntity.ok(reviewService.getAiReviewSummary(menuId));
