@@ -2,6 +2,7 @@ import { createApp, ref } from 'vue'
 import App from './App.vue'
 import router from './router.js'
 import { authVerify } from './api.js'
+import './styles/global.css'
 
 // Global new-order badge counter — shared via app.config.globalProperties
 const newOrderCount = ref(0)

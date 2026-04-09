@@ -3,35 +3,56 @@
     <!-- Sidebar nav — hidden on login page -->
     <aside v-if="isAuthenticated" class="sidebar">
       <div class="sidebar-header">
-        <span class="logo-icon">🍽</span>
-        <span class="logo-text">관리자</span>
+        <div class="logo-mark">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect width="28" height="28" rx="8" fill="var(--accent-brass)" fill-opacity="0.15"/>
+            <path d="M8 18.5C8 18.5 9.5 14 14 14C18.5 14 20 18.5 20 18.5" stroke="var(--accent-brass)" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="14" cy="10" r="2.5" stroke="var(--accent-brass)" stroke-width="1.8"/>
+            <path d="M7 20H21" stroke="var(--accent-brass)" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <span class="logo-title">Brasserie</span>
+          <span class="logo-sub">Admin Console</span>
+        </div>
       </div>
 
       <nav class="sidebar-nav">
         <router-link to="/dashboard" class="nav-item">
-          <span class="nav-icon">📊</span>
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="1" y="1" width="6" height="7" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+            <rect x="11" y="1" width="6" height="4" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+            <rect x="1" y="12" width="6" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+            <rect x="11" y="9" width="6" height="8" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
+          </svg>
           <span>대시보드</span>
         </router-link>
 
         <router-link to="/orders" class="nav-item" @click="clearBadge">
-          <span class="nav-icon">📋</span>
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <path d="M3 5H15M3 9H15M3 13H10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
           <span>주문 관리</span>
           <span v-if="newOrderCount > 0" class="badge">{{ newOrderCount > 99 ? '99+' : newOrderCount }}</span>
         </router-link>
 
         <router-link to="/menus" class="nav-item">
-          <span class="nav-icon">🍱</span>
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M6 7H12M6 11H10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
           <span>메뉴 관리</span>
         </router-link>
 
-        <router-link to="/categories" class="nav-item">
-          <span class="nav-icon">🗂</span>
-          <span>카테고리</span>
-        </router-link>
       </nav>
 
       <div class="sidebar-footer">
-        <button class="logout-btn" @click="logout">로그아웃</button>
+        <button class="logout-btn" @click="logout">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M6 2H4C3.44772 2 3 2.44772 3 3V13C3 13.5523 3.44772 14 4 14H6M11 11L14 8M14 8L11 5M14 8H6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          로그아웃
+        </button>
       </div>
     </aside>
 
@@ -133,6 +154,9 @@ onUnmounted(() => {
 </script>
 
 <style>
+/* ============================================================
+   LAYOUT
+   ============================================================ */
 #layout {
   display: flex;
   min-height: 100vh;
@@ -140,10 +164,10 @@ onUnmounted(() => {
 
 /* ── Sidebar ── */
 .sidebar {
-  width: 220px;
+  width: var(--sidebar-width);
   min-height: 100vh;
-  background: #1a1d23;
-  color: #c9ced8;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
@@ -155,233 +179,146 @@ onUnmounted(() => {
 }
 
 .sidebar-header {
-  padding: 24px 20px 20px;
-  font-size: 18px;
-  font-weight: 700;
-  color: #fff;
-  border-bottom: 1px solid #2d3240;
+  padding: 24px 20px 22px;
+  border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
-  gap: 10px;
-  letter-spacing: -0.3px;
+  gap: 12px;
 }
 
-.logo-icon { font-size: 22px; }
+.logo-mark {
+  flex-shrink: 0;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.logo-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  line-height: 1.2;
+}
+
+.logo-sub {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
 
 .sidebar-nav {
   flex: 1;
   padding: 16px 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: #8a92a3;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  transition: background 0.15s, color 0.15s;
+  transition: all var(--transition-fast);
   position: relative;
 }
 
 .nav-item:hover {
-  background: #252a35;
-  color: #e0e4ef;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .nav-item.router-link-active {
-  background: #2563eb;
-  color: #fff;
+  background: var(--accent-brass-glow);
+  color: var(--accent-brass);
+  box-shadow: inset 0 0 0 1px var(--accent-brass-border);
 }
 
-.nav-icon { font-size: 16px; flex-shrink: 0; }
+.nav-item.router-link-active .nav-icon {
+  color: var(--accent-brass);
+}
+
+.nav-icon {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.nav-item:hover .nav-icon,
+.nav-item.router-link-active .nav-icon {
+  opacity: 1;
+}
 
 .badge {
   margin-left: auto;
-  background: #ef4444;
+  background: var(--danger);
   color: #fff;
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 1px 7px;
   border-radius: 10px;
   min-width: 20px;
   text-align: center;
+  line-height: 18px;
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(200, 120, 100, 0.4); }
+  50% { box-shadow: 0 0 0 6px rgba(200, 120, 100, 0); }
 }
 
 .sidebar-footer {
   padding: 16px 12px 20px;
-  border-top: 1px solid #2d3240;
+  border-top: 1px solid var(--border);
 }
 
 .logout-btn {
   width: 100%;
-  padding: 9px;
-  border-radius: 8px;
-  border: 1px solid #3a3f4d;
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
   background: transparent;
-  color: #8a92a3;
-  font-size: 14px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: inherit;
 }
 
 .logout-btn:hover {
-  background: #ef4444;
-  color: #fff;
-  border-color: #ef4444;
+  background: var(--danger-bg);
+  color: var(--danger);
+  border-color: rgba(248, 113, 113, 0.2);
 }
 
 /* ── Content ── */
 .content.with-sidebar {
-  margin-left: 220px;
+  margin-left: var(--sidebar-width);
   flex: 1;
   min-height: 100vh;
-  background: #f0f2f5;
+  background: var(--bg-base);
 }
 
 .content.full {
   flex: 1;
   min-height: 100vh;
-  background: #f0f2f5;
+  background: var(--bg-base);
 }
 
-/* ── Shared utility classes used in views ── */
-.page {
-  padding: 32px 36px;
-  max-width: 1200px;
-}
-
-.page-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 24px;
-}
-
-.page-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1a1d23;
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: opacity 0.15s, transform 0.1s;
-}
-
-.btn:active { transform: scale(0.97); }
-.btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-.btn-primary { background: #2563eb; color: #fff; }
-.btn-primary:hover { background: #1d4ed8; }
-
-.btn-danger { background: #ef4444; color: #fff; }
-.btn-danger:hover { background: #dc2626; }
-
-.btn-secondary { background: #e5e7eb; color: #374151; }
-.btn-secondary:hover { background: #d1d5db; }
-
-.btn-sm { padding: 5px 12px; font-size: 13px; }
-
-.card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 4px rgba(0,0,0,.05);
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
-
-th {
-  padding: 12px 14px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
-}
-
-td {
-  padding: 12px 14px;
-  border-bottom: 1px solid #f5f5f5;
-  color: #374151;
-  vertical-align: middle;
-}
-
-tr:last-child td { border-bottom: none; }
-tr:hover td { background: #fafbff; }
-
-.tag {
-  display: inline-block;
-  padding: 3px 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.alert-box {
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 16px;
-}
-
-.alert-error { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
-.alert-success { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-
-.form-group {
-  margin-bottom: 18px;
-}
-
-.form-label {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: #374151;
-  margin-bottom: 6px;
-}
-
-.form-input, .form-select, .form-textarea {
-  width: 100%;
-  padding: 9px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 14px;
-  color: #1f2937;
-  background: #fff;
-  transition: border-color 0.15s;
-  outline: none;
-}
-
-.form-input:focus, .form-select:focus, .form-textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,.1);
-}
-
-.form-textarea { resize: vertical; min-height: 80px; }
+/* Shared utility classes → see /styles/global.css */
 </style>
