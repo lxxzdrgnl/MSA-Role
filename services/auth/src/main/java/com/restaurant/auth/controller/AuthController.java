@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -48,6 +49,25 @@ public class AuthController {
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         authService.logout(authHeader);
         return ResponseEntity.ok(Map.of("message", "로그아웃 되었습니다."));
+    }
+
+    @GetMapping("/profile")
+    public ResponseEntity<LoginResponse.UserInfo> getProfile(
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(authService.getProfile(userId));
+    }
+
+    @PatchMapping("/profile/nickname")
+    public ResponseEntity<LoginResponse.UserInfo> updateNickname(
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestBody Map<String, String> body) {
+        String nickname = body.get("nickname");
+        return ResponseEntity.ok(authService.updateNickname(userId, nickname));
+    }
+
+    @PostMapping("/nicknames")
+    public ResponseEntity<Map<Long, String>> getNicknames(@RequestBody List<Long> userIds) {
+        return ResponseEntity.ok(authService.getNicknames(userIds));
     }
 
     @PostMapping("/promote/{userId}")

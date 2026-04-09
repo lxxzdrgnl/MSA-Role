@@ -112,6 +112,23 @@ public class AuthService {
         tokenService.removeRefreshToken(userId);
     }
 
+    public LoginResponse.UserInfo updateNickname(Long userId, String nickname) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        userRepository.updateNickname(userId, nickname);
+        return new LoginResponse.UserInfo(user.getId(), user.getEmail(), nickname, user.getRole());
+    }
+
+    public LoginResponse.UserInfo getProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."));
+        return new LoginResponse.UserInfo(user.getId(), user.getEmail(), user.getNickname(), user.getRole());
+    }
+
+    public java.util.Map<Long, String> getNicknames(java.util.List<Long> userIds) {
+        return userRepository.findNicknamesByIds(userIds);
+    }
+
     public void promote(Long userId, String authHeader) {
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             throw new AuthException(HttpStatus.UNAUTHORIZED, "인증 토큰이 필요합니다.");

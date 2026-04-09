@@ -5,6 +5,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -51,5 +55,20 @@ public class UserRepository {
 
     public void updateRole(Long id, String role) {
         jdbc.update("UPDATE users SET role = ? WHERE id = ?", role, id);
+    }
+
+    public void updateNickname(Long id, String nickname) {
+        jdbc.update("UPDATE users SET nickname = ? WHERE id = ?", nickname, id);
+    }
+
+    public Map<Long, String> findNicknamesByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) return Collections.emptyMap();
+        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        String sql = "SELECT id, nickname FROM users WHERE id IN (" + placeholders + ")";
+        Map<Long, String> result = new HashMap<>();
+        jdbc.query(sql, rs -> {
+            result.put(rs.getLong("id"), rs.getString("nickname"));
+        }, ids.toArray());
+        return result;
     }
 }
