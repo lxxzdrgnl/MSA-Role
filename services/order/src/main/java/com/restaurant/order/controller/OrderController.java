@@ -2,6 +2,13 @@ package com.restaurant.order.controller;
 
 import com.restaurant.order.dto.*;
 import com.restaurant.order.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "Order", description = "주문 관리 API")
 @RestController
 @RequestMapping("/api/orders")
 public class OrderController {
@@ -20,6 +28,17 @@ public class OrderController {
         this.orderService = orderService;
     }
 
+    @Operation(summary = "주문 생성", description = "새 주문을 생성합니다. X-User-Id 헤더 필요.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "주문 생성 성공"),
+        @ApiResponse(responseCode = "400", description = "입력값 오류 또는 품절 메뉴",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/orders\",\"status\":400,\"code\":\"BAD_REQUEST\",\"message\":\"Menu item is sold out: 비빔밥\"}"))),
+        @ApiResponse(responseCode = "401", description = "헤더 누락",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping
     public ResponseEntity<OrderResponse> createOrder(
             @RequestHeader("X-User-Id") Long userId,
@@ -68,6 +87,18 @@ public class OrderController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "주문 취소", description = "PENDING 상태 주문만 취소 가능합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "취소 성공"),
+        @ApiResponse(responseCode = "403", description = "취소 권한 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/orders/1/cancel\",\"status\":403,\"code\":\"FORBIDDEN\",\"message\":\"주문 취소 권한이 없습니다.\"}"))),
+        @ApiResponse(responseCode = "404", description = "주문 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "409", description = "이미 처리된 주문",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/orders/1/cancel\",\"status\":409,\"code\":\"STATE_CONFLICT\",\"message\":\"주문이 이미 처리 중이거나 완료되어 취소할 수 없습니다.\"}")))
+    })
     @PatchMapping("/{id}/cancel")
     public ResponseEntity<?> cancelOrder(
             @PathVariable Long id,
@@ -82,6 +113,18 @@ public class OrderController {
         }
     }
 
+    @Operation(summary = "주문 상태 변경 (관리자)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "상태 변경 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 상태값",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "관리자 권한 필요",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "주문 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PatchMapping("/{id}/status")
     public ResponseEntity<OrderResponse> updateStatus(
             @PathVariable Long id,

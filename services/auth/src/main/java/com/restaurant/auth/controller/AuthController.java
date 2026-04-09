@@ -2,6 +2,13 @@ package com.restaurant.auth.controller;
 
 import com.restaurant.auth.dto.*;
 import com.restaurant.auth.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 
+@Tag(name = "Auth", description = "인증/인가 API")
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -20,18 +28,53 @@ public class AuthController {
         this.authService = authService;
     }
 
+    @Operation(summary = "회원가입", description = "새 사용자를 등록합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "회원가입 성공"),
+        @ApiResponse(responseCode = "400", description = "입력값 검증 실패",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/register\",\"status\":400,\"code\":\"VALIDATION_FAILED\",\"message\":\"입력값 검증에 실패했습니다.\",\"details\":{\"email\":\"must not be blank\"}}"))),
+        @ApiResponse(responseCode = "409", description = "이메일 중복",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/register\",\"status\":409,\"code\":\"DUPLICATE_RESOURCE\",\"message\":\"이미 존재하는 이메일입니다.\"}"))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/register\",\"status\":500,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+    })
     @PostMapping("/register")
     public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         LoginResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "로그인", description = "이메일/비밀번호로 로그인하여 JWT 토큰을 발급받습니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "로그인 성공"),
+        @ApiResponse(responseCode = "400", description = "입력값 검증 실패",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/login\",\"status\":400,\"code\":\"VALIDATION_FAILED\",\"message\":\"입력값 검증에 실패했습니다.\",\"details\":{\"email\":\"must not be blank\"}}"))),
+        @ApiResponse(responseCode = "401", description = "인증 실패",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/login\",\"status\":401,\"code\":\"UNAUTHORIZED\",\"message\":\"이메일 또는 비밀번호가 올바르지 않습니다.\"}"))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/login\",\"status\":500,\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"서버 내부 오류가 발생했습니다.\"}")))
+    })
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "토큰 갱신", description = "리프레시 토큰으로 새 액세스 토큰을 발급합니다.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "갱신 성공"),
+        @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/auth/refresh\",\"status\":401,\"code\":\"UNAUTHORIZED\",\"message\":\"유효하지 않은 리프레시 토큰입니다.\"}"))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(@Valid @RequestBody RefreshRequest request) {
         TokenResponse response = authService.refresh(request);

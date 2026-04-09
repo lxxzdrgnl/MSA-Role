@@ -2,6 +2,13 @@ package com.restaurant.menu.controller;
 
 import com.restaurant.menu.dto.*;
 import com.restaurant.menu.service.MenuService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+@Tag(name = "Menu", description = "메뉴/카테고리 관리 API")
 @RestController
 @RequestMapping("/api/menus")
 public class MenuController {
@@ -21,6 +29,12 @@ public class MenuController {
         this.menuService = menuService;
     }
 
+    @Operation(summary = "메뉴 목록 조회")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "400", description = "잘못된 요청 파라미터",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @GetMapping
     public ResponseEntity<PageResponse<MenuResponse>> getMenus(
             @RequestParam(required = false) Long category,
@@ -32,6 +46,13 @@ public class MenuController {
         return ResponseEntity.ok(menuService.getMenus(category, keyword, page, size, sort));
     }
 
+    @Operation(summary = "메뉴 상세 조회")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "조회 성공"),
+        @ApiResponse(responseCode = "404", description = "메뉴 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/menus/1\",\"status\":404,\"code\":\"RESOURCE_NOT_FOUND\",\"message\":\"요청한 리소스를 찾을 수 없습니다.\"}")))
+    })
     @GetMapping("/{id}")
     public ResponseEntity<MenuResponse> getMenu(@PathVariable Long id) {
         return ResponseEntity.ok(menuService.getMenu(id));
@@ -51,6 +72,20 @@ public class MenuController {
      * Create menu — accepts multipart/form-data with individual fields.
      * Each field sent as a separate form field (not a nested JSON part).
      */
+    @Operation(summary = "메뉴 생성 (관리자)", description = "새 메뉴를 등록합니다. X-User-Role: ADMIN 헤더 필요.")
+    @ApiResponses({
+        @ApiResponse(responseCode = "201", description = "생성 성공"),
+        @ApiResponse(responseCode = "400", description = "입력값 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "401", description = "헤더 누락",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/menus\",\"status\":401,\"code\":\"UNAUTHORIZED\",\"message\":\"필수 헤더가 누락되었습니다: X-User-Role\"}"))),
+        @ApiResponse(responseCode = "403", description = "권한 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class),
+                examples = @ExampleObject(value = "{\"timestamp\":\"2025-03-05T12:00:00Z\",\"path\":\"/api/menus\",\"status\":403,\"code\":\"FORBIDDEN\",\"message\":\"관리자 권한이 필요합니다\"}"))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MenuResponse> createMenu(
             @RequestHeader("X-User-Role") String role,
@@ -93,6 +128,18 @@ public class MenuController {
         return ResponseEntity.ok(menuService.updateMenu(id, request, image));
     }
 
+    @Operation(summary = "메뉴 삭제 (관리자)")
+    @ApiResponses({
+        @ApiResponse(responseCode = "204", description = "삭제 성공"),
+        @ApiResponse(responseCode = "401", description = "헤더 누락",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "403", description = "권한 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "404", description = "메뉴 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+        @ApiResponse(responseCode = "500", description = "서버 오류",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteMenu(
             @RequestHeader("X-User-Role") String role,
