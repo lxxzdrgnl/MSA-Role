@@ -1,29 +1,39 @@
 package com.restaurant.order.dto;
 
-import java.time.LocalDateTime;
+import com.restaurant.order.exception.ErrorCode;
 
-public class ErrorResponse {
+import java.time.Instant;
+import java.util.Map;
 
-    private int status;
-    private String message;
-    private LocalDateTime timestamp;
-
-    public ErrorResponse() {
-        this.timestamp = LocalDateTime.now();
+public record ErrorResponse(
+    String timestamp,
+    String path,
+    int status,
+    String code,
+    String message,
+    Map<String, String> details
+) {
+    public static ErrorResponse of(ErrorCode errorCode, String path) {
+        return new ErrorResponse(
+            Instant.now().toString(), path,
+            errorCode.getStatus(), errorCode.getCode(),
+            errorCode.getMessage(), null
+        );
     }
 
-    public ErrorResponse(int status, String message) {
-        this.status = status;
-        this.message = message;
-        this.timestamp = LocalDateTime.now();
+    public static ErrorResponse of(ErrorCode errorCode, String path, String message) {
+        return new ErrorResponse(
+            Instant.now().toString(), path,
+            errorCode.getStatus(), errorCode.getCode(),
+            message, null
+        );
     }
 
-    public int getStatus() { return status; }
-    public void setStatus(int status) { this.status = status; }
-
-    public String getMessage() { return message; }
-    public void setMessage(String message) { this.message = message; }
-
-    public LocalDateTime getTimestamp() { return timestamp; }
-    public void setTimestamp(LocalDateTime timestamp) { this.timestamp = timestamp; }
+    public static ErrorResponse of(ErrorCode errorCode, String path, String message, Map<String, String> details) {
+        return new ErrorResponse(
+            Instant.now().toString(), path,
+            errorCode.getStatus(), errorCode.getCode(),
+            message, details
+        );
+    }
 }

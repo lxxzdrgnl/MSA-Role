@@ -1,6 +1,9 @@
 package com.restaurant.gateway.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.restaurant.gateway.config.RouteConfig;
+import com.restaurant.gateway.dto.ErrorResponse;
+import com.restaurant.gateway.exception.ErrorCode;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
@@ -21,6 +24,7 @@ import java.util.*;
 public class JwtAuthFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
     private final RestTemplate restTemplate;
     private final RouteConfig routeConfig;
 
@@ -73,8 +77,8 @@ public class JwtAuthFilter implements Filter {
         String authHeader = req.getHeader("Authorization");
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             res.setStatus(401);
-            res.setContentType("application/json");
-            res.getWriter().write("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Token is required\"}");
+            res.setContentType("application/json;charset=UTF-8");
+            res.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.of(ErrorCode.UNAUTHORIZED, req.getRequestURI(), "인증 토큰이 필요합니다.")));
             return;
         }
 
@@ -94,8 +98,8 @@ public class JwtAuthFilter implements Filter {
             Map body = verifyResponse.getBody();
             if (body == null || !Boolean.TRUE.equals(body.get("valid"))) {
                 res.setStatus(401);
-                res.setContentType("application/json");
-                res.getWriter().write("{\"status\":401,\"error\":\"UNAUTHORIZED\",\"message\":\"Invalid token\"}");
+                res.setContentType("application/json;charset=UTF-8");
+                res.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.of(ErrorCode.UNAUTHORIZED, req.getRequestURI(), "유효하지 않은 토큰입니다.")));
                 return;
             }
 

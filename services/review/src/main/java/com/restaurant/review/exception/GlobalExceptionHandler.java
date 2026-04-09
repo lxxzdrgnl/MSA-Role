@@ -1,6 +1,6 @@
-package com.restaurant.menu.exception;
+package com.restaurant.review.exception;
 
-import com.restaurant.menu.dto.ErrorResponse;
+import com.restaurant.review.dto.ErrorResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,10 +10,10 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.NoSuchElementException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -52,18 +52,18 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(ErrorCode.BAD_REQUEST, request.getRequestURI(), e.getMessage()));
     }
 
+    @ExceptionHandler(NoSuchElementException.class)
+    public ResponseEntity<ErrorResponse> handleNotFound(NoSuchElementException e, HttpServletRequest request) {
+        log.warn("Not found: {}", e.getMessage());
+        return ResponseEntity.status(404)
+                .body(ErrorResponse.of(ErrorCode.RESOURCE_NOT_FOUND, request.getRequestURI(), e.getMessage()));
+    }
+
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<ErrorResponse> handleSecurity(SecurityException e, HttpServletRequest request) {
         log.warn("Forbidden: {}", e.getMessage());
         return ResponseEntity.status(403)
                 .body(ErrorResponse.of(ErrorCode.FORBIDDEN, request.getRequestURI(), e.getMessage()));
-    }
-
-    @ExceptionHandler(MaxUploadSizeExceededException.class)
-    public ResponseEntity<ErrorResponse> handleMaxUploadSize(MaxUploadSizeExceededException e, HttpServletRequest request) {
-        log.warn("File too large: {}", e.getMessage());
-        return ResponseEntity.status(413)
-                .body(ErrorResponse.of(ErrorCode.BAD_REQUEST, request.getRequestURI(), "파일 크기가 제한을 초과했습니다 (최대 20MB)."));
     }
 
     @ExceptionHandler(DataAccessException.class)

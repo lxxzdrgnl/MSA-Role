@@ -1,6 +1,6 @@
-package com.restaurant.review.dto;
+package com.restaurant.gateway.dto;
 
-import com.restaurant.review.exception.ErrorCode;
+import com.restaurant.gateway.exception.ErrorCode;
 
 import java.time.Instant;
 import java.util.Map;
@@ -26,14 +26,6 @@ public record ErrorResponse(
             Instant.now().toString(), path,
             errorCode.getStatus(), errorCode.getCode(),
             message, null
-        );
-    }
-
-    public static ErrorResponse of(ErrorCode errorCode, String path, String message, Map<String, String> details) {
-        return new ErrorResponse(
-            Instant.now().toString(), path,
-            errorCode.getStatus(), errorCode.getCode(),
-            message, details
         );
     }
 }

@@ -1,5 +1,8 @@
 package com.restaurant.gateway.filter;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.restaurant.gateway.dto.ErrorResponse;
+import com.restaurant.gateway.exception.ErrorCode;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -30,6 +33,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class RateLimitFilter implements Filter {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitFilter.class);
+    private static final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final long WINDOW_MS = 60_000; // 1 minute
     private static final int AUTH_LIMIT = 20;
@@ -74,14 +78,13 @@ public class RateLimitFilter implements Filter {
             log.warn("Rate limit exceeded for {} on path {} (bucket={}, limit={})",
                     clientIp, path, bucket, limit);
 
+            HttpServletRequest httpRequest = (HttpServletRequest) request;
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             httpResponse.setStatus(429);
-            httpResponse.setContentType("application/json");
+            httpResponse.setContentType("application/json;charset=UTF-8");
             httpResponse.setHeader("Retry-After", "60");
-            httpResponse.getWriter().write(
-                "{\"status\":429,\"error\":\"TOO_MANY_REQUESTS\","
-                + "\"message\":\"Rate limit exceeded. Please try again later.\"}"
-            );
+            ErrorResponse errorResponse = ErrorResponse.of(ErrorCode.TOO_MANY_REQUESTS, httpRequest.getRequestURI(), "요청 한도를 초과했습니다. 잠시 후 다시 시도해주세요.");
+            httpResponse.getWriter().write(objectMapper.writeValueAsString(errorResponse));
             return;
         }
 
