@@ -188,6 +188,102 @@ AI Operations → Order + Menu (운영 데이터 조회)
 
 ---
 
+## API 공통 규격
+
+### 에러 응답 포맷
+
+모든 API는 오류 시 아래 JSON 포맷으로 응답합니다:
+
+```json
+{
+  "timestamp": "2025-03-05T12:00:00Z",
+  "path": "/api/menus/123",
+  "status": 400,
+  "code": "VALIDATION_FAILED",
+  "message": "입력값 검증에 실패했습니다.",
+  "details": { "name": "must not be blank" }
+}
+```
+
+### 표준 에러 코드 (15종)
+
+| HTTP | 코드 | 설명 |
+|------|------|------|
+| 400 | `BAD_REQUEST` | 요청 형식이 올바르지 않음 |
+| 400 | `VALIDATION_FAILED` | 필드 유효성 검사 실패 |
+| 400 | `INVALID_QUERY_PARAM` | 쿼리 파라미터 값이 잘못됨 |
+| 401 | `UNAUTHORIZED` | 인증 토큰 없음 또는 잘못된 토큰 |
+| 401 | `TOKEN_EXPIRED` | 토큰 만료 |
+| 403 | `FORBIDDEN` | 접근 권한 없음 |
+| 404 | `RESOURCE_NOT_FOUND` | 요청한 리소스가 존재하지 않음 |
+| 404 | `USER_NOT_FOUND` | 사용자 ID가 존재하지 않음 |
+| 409 | `DUPLICATE_RESOURCE` | 중복 데이터 존재 |
+| 409 | `STATE_CONFLICT` | 리소스 상태 충돌 |
+| 422 | `UNPROCESSABLE_ENTITY` | 처리할 수 없는 요청 내용 |
+| 429 | `TOO_MANY_REQUESTS` | 요청 한도 초과 |
+| 500 | `INTERNAL_SERVER_ERROR` | 서버 내부 오류 |
+| 500 | `DATABASE_ERROR` | DB 연동 오류 |
+| 500 | `UNKNOWN_ERROR` | 알 수 없는 오류 |
+
+### 페이지네이션 규격
+
+목록 조회 API는 다음 파라미터를 지원합니다:
+
+| 파라미터 | 기본값 | 최대값 | 설명 |
+|----------|--------|--------|------|
+| `page` | 0 | - | 페이지 번호 (0-indexed) |
+| `size` | 20 | 100 | 페이지당 항목 수 |
+| `sort` | `createdAt,DESC` | - | 정렬 (field,ASC\|DESC) |
+
+서비스별 검색/필터:
+
+| 서비스 | 필터 파라미터 |
+|--------|---------------|
+| Menu | `category` (카테고리 ID), `keyword` (이름/설명/태그 검색) |
+| Order | `status` (주문 상태), `dateFrom`/`dateTo` (날짜 범위) |
+| Review | `menuId` (메뉴 ID), `rating` (별점 필터) |
+
+응답 포맷:
+```json
+{
+  "content": [...],
+  "page": 0,
+  "size": 20,
+  "totalElements": 153,
+  "totalPages": 8,
+  "sort": "createdAt,DESC"
+}
+```
+
+### 요청/응답 로깅
+
+모든 서비스는 요청마다 아래 정보를 로깅합니다:
+- 메서드, 경로, 상태코드, 지연시간 (ms)
+- 에러 발생 시 스택트레이스 (민감정보 제외)
+
+### 헬스체크
+
+모든 서비스는 `GET /health` 엔드포인트를 제공합니다 (인증 불필요):
+
+```json
+{ "status": "UP", "version": "1.0.0", "buildTime": "2025-03-05T12:00:00Z" }
+```
+
+### API 문서
+
+| 서비스 | Swagger UI |
+|--------|------------|
+| Auth | http://localhost:8081/api/auth/swagger-ui.html |
+| Menu | http://localhost:8082/swagger-ui.html |
+| Order | http://localhost:8083/swagger-ui.html |
+| Review | http://localhost:8084/swagger-ui.html |
+| AI Recommendation | http://localhost:8001/docs |
+| AI Review Writer | http://localhost:8002/docs |
+| AI Operations | http://localhost:8003/docs |
+| AI Validation | http://localhost:8004/docs |
+
+---
+
 ## 프론트엔드 설계 패턴
 
 양쪽 프론트엔드 공통 아키텍처:

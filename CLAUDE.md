@@ -44,3 +44,25 @@ AI Operations → Order + Menu (운영 데이터 조회)
 - 인증: Gateway가 JWT 검증 후 `X-User-Id`, `X-User-Role` 헤더로 전달
 - 문서: 각 서비스 SpringDoc OpenAPI (Swagger UI)
 - 컨테이너: Docker (docker-compose.yml)
+
+## 에러 응답 규격
+- 모든 서비스 통일 JSON 포맷: `{timestamp, path, status, code, message, details}`
+- 15종 표준 에러 코드 (ErrorCode enum / errors.py)
+- Spring Boot: `GlobalExceptionHandler` (@RestControllerAdvice) + `BusinessException`
+- FastAPI: `errors.py` (register_error_handlers) + `BusinessError`
+
+## 페이지네이션 규격
+- 0-indexed page, size (기본 20, 최대 100), sort (field,ASC|DESC)
+- 응답: `{content, page, size, totalElements, totalPages, sort}`
+- Menu: category, keyword 필터 / Order: status, dateFrom/dateTo 필터 / Review: menuId, rating 필터
+
+## 로깅
+- Spring Boot: `LoggingFilter` (OncePerRequestFilter) — 메서드, 경로, 상태코드, 지연시간
+- FastAPI: `LoggingMiddleware` (BaseHTTPMiddleware) — 동일 포맷
+
+## 헬스체크
+- 모든 서비스: `GET /health` → `{status, version, buildTime}` (인증 불필요)
+
+## 환경변수
+- 각 서비스에 `.env.example` 제공
+- 비밀키(JWT_SECRET, OPENAI_API_KEY)는 절대 코드에 하드코딩 금지
