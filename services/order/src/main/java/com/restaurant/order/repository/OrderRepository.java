@@ -105,7 +105,7 @@ public class OrderRepository {
 
     public List<Order> findActiveOrders() {
         return jdbcTemplate.query(
-                "SELECT * FROM orders WHERE status IN ('PENDING', 'COOKING') ORDER BY created_at ASC",
+                "SELECT * FROM orders WHERE status IN ('PENDING', 'ACCEPTED', 'COOKING', 'READY') ORDER BY created_at ASC",
                 ROW_MAPPER
         );
     }

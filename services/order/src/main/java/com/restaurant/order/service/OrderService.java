@@ -126,6 +126,28 @@ public class OrderService {
                 .collect(Collectors.toList());
     }
 
+    public OrderResponse cancelOrder(Long orderId, Long userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
+
+        if (!order.getUserId().equals(userId)) {
+            throw new SecurityException("주문 취소 권한이 없습니다.");
+        }
+
+        if (!"PENDING".equals(order.getStatus())) {
+            throw new IllegalStateException("주문이 이미 처리 중이거나 완료되어 취소할 수 없습니다.");
+        }
+
+        orderRepository.updateStatus(orderId, "CANCELLED");
+        order.setStatus("CANCELLED");
+        order.setUpdatedAt(LocalDateTime.now());
+
+        notifyGateway(orderId, userId, "CANCELLED");
+
+        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
+        return toResponse(order, items);
+    }
+
     public OrderResponse updateStatus(Long orderId, String status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new IllegalArgumentException("Order not found: " + orderId));
