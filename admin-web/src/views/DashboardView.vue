@@ -1,5 +1,5 @@
 <template>
-  <div class="dash">
+  <div class="page dash">
     <!-- ─── Top Bar ─── -->
     <div class="dash-header">
       <div>
@@ -54,8 +54,8 @@
       <div class="kpi-divider"></div>
       <div class="kpi">
         <span class="kpi-label">혼잡도</span>
-        <span class="kpi-value" :class="`kpi-cong-${localCongestionLevel}`">
-          {{ CONGESTION_LABELS[localCongestionLevel.toUpperCase()] ?? '—' }}
+        <span class="kpi-value" :class="`kpi-cong-${aiCongestionClass}`">
+          {{ aiCongestionLabel }}
         </span>
       </div>
       <div class="kpi-divider"></div>
@@ -102,13 +102,16 @@
           <div class="gauge-row">
             <div class="gauge">
               <div class="gauge-track">
-                <div class="gauge-fill" :style="{ width: localCongestionPercent + '%' }" :class="`gauge-${localCongestionLevel}`"></div>
+                <div class="gauge-fill" :style="{ width: aiCongestionPercent + '%' }" :class="`gauge-${aiCongestionClass}`"></div>
               </div>
               <div class="gauge-labels"><span>여유</span><span>보통</span><span>혼잡</span></div>
             </div>
             <div class="gauge-detail">
-              <span class="gauge-level" :class="`kpi-cong-${localCongestionLevel}`">{{ CONGESTION_LABELS[localCongestionLevel.toUpperCase()] ?? '—' }}</span>
-              <span class="gauge-msg">진행 중 {{ inProgressCount }}건 (대기 {{ pendingCount }}·확인 {{ acceptedCount }}·조리 {{ cookingCount }})</span>
+              <span class="gauge-level" :class="`kpi-cong-${aiCongestionClass}`">{{ aiCongestionLabel }}</span>
+              <span class="gauge-msg">
+                진행 중 {{ inProgressCount }}건 (대기 {{ pendingCount }}·확인 {{ acceptedCount }}·조리 {{ cookingCount }})
+                <template v-if="congestion.estimated_wait_minutes"> · 예상 대기 {{ congestion.estimated_wait_minutes }}분</template>
+              </span>
             </div>
           </div>
         </div>
@@ -130,14 +133,58 @@
         </div>
       </div>
     </div>
+
+    <!-- ─── AI 매장 진단 ─── -->
+    <div class="panel quality-panel">
+      <div class="panel-header">
+        <h3>AI 매장 진단</h3>
+        <div class="quality-header-right">
+          <span v-if="qualityCacheInfo" class="quality-cache-info">{{ qualityCacheInfo }}</span>
+          <button class="btn btn-secondary btn-sm" @click="runQualityAnalysis(true)" :disabled="qualityLoading">
+            <span class="spinner-xs" v-if="qualityLoading"></span>
+            <svg v-else width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5C3.74 1.5 1.5 3.74 1.5 6.5S3.74 11.5 6.5 11.5 11.5 9.26 11.5 6.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/><path d="M9 1l1.5 1.5L9 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            {{ qualityLoading ? '분석 중...' : '새로 분석' }}
+          </button>
+        </div>
+      </div>
+      <div v-if="qualityError" class="alert-box alert-error">{{ qualityError }}</div>
+      <div v-if="!qualityResult && qualityLoading" class="panel-empty"><div class="loading-spinner"></div> AI가 매장 상태를 분석하고 있습니다...</div>
+      <div v-if="qualityResult" class="quality-result">
+        <div class="quality-score">
+          <span class="score-num">{{ qualityResult.overall_score.toFixed(1) }}</span>
+          <span class="score-label">/ 5.0 종합 점수</span>
+        </div>
+        <div class="quality-cols">
+          <div class="quality-col">
+            <div class="quality-col-title">강점</div>
+            <ul class="quality-list">
+              <li v-for="(s, i) in qualityResult.strengths" :key="i">{{ s }}</li>
+            </ul>
+          </div>
+          <div class="quality-col">
+            <div class="quality-col-title">약점</div>
+            <ul class="quality-list">
+              <li v-for="(w, i) in qualityResult.weaknesses" :key="i">{{ w }}</li>
+            </ul>
+          </div>
+          <div class="quality-col">
+            <div class="quality-col-title">개선 제안</div>
+            <ul class="quality-list">
+              <li v-for="(r, i) in qualityResult.recommendations" :key="i">{{ r }}</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '../api'
+import { analyzeQuality } from '../api.js'
 import { formatNum as fmtNum, formatNumShort as fmtShort, timeAgo } from '../utils/formatters.js'
-import { CONGESTION_LABELS, congestionPercent as getCongestionPercent } from '../utils/status.js'
+import { CONGESTION_LABELS } from '../utils/status.js'
 import RevenueChart from '../components/RevenueChart.vue'
 import StatusDonut from '../components/StatusDonut.vue'
 
@@ -221,9 +268,107 @@ const localCongestionPercent = computed(() => {
   return Math.min(Math.round((n / 10) * 100), 95)
 })
 
-const congestionPercent = computed(() => {
-  return getCongestionPercent(congestion.value.level)
-})
+
+const AI_LEVEL_MAP = { '여유': 'low', '보통': 'medium', '혼잡': 'high' }
+const AI_PERCENT_MAP = { '여유': 20, '보통': 55, '혼잡': 90 }
+
+const aiCongestionClass = computed(() =>
+  AI_LEVEL_MAP[congestion.value.level] ?? localCongestionLevel.value
+)
+const aiCongestionPercent = computed(() =>
+  AI_PERCENT_MAP[congestion.value.level] ?? localCongestionPercent.value
+)
+const aiCongestionLabel = computed(() =>
+  congestion.value.level ?? CONGESTION_LABELS[localCongestionLevel.value.toUpperCase()] ?? '—'
+)
+
+// ── AI 매장 진단 (1시간 캐싱) ──
+const CACHE_KEY = 'quality_analysis_cache'
+const CACHE_TTL = 60 * 60 * 1000 // 1시간
+
+const qualityResult = ref(null)
+const qualityLoading = ref(false)
+const qualityError = ref('')
+const qualityCacheInfo = ref('')
+
+function getCachedQuality(reviewCount, orderCount) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const cached = JSON.parse(raw)
+    const age = Date.now() - cached.timestamp
+    const dataChanged = (reviewCount != null && cached.reviewCount !== reviewCount)
+        || (orderCount != null && cached.orderCount !== orderCount)
+    // 1시간 지났어도 데이터 변화 없으면 캐시 유지
+    if (age > CACHE_TTL && dataChanged) return null
+    return cached
+  } catch { return null }
+}
+
+function saveCacheQuality(result, reviewCount, orderCount) {
+  localStorage.setItem(CACHE_KEY, JSON.stringify({
+    result, reviewCount, orderCount, timestamp: Date.now()
+  }))
+}
+
+function formatCacheAge(ts) {
+  const min = Math.floor((Date.now() - ts) / 60000)
+  if (min < 1) return '방금 분석'
+  if (min < 60) return `${min}분 전 분석`
+  return `${Math.floor(min / 60)}시간 전 분석`
+}
+
+async function runQualityAnalysis(forceRefresh = false) {
+  qualityError.value = ''
+
+  // 캐시 확인 (강제 새로고침이 아닌 경우)
+  if (!forceRefresh) {
+    const cached = getCachedQuality(revenue.value.orderCount ?? 0, allOrders.value.length)
+    if (cached) {
+      qualityResult.value = cached.result
+      qualityCacheInfo.value = formatCacheAge(cached.timestamp)
+      return
+    }
+  }
+
+  qualityLoading.value = true
+  try {
+    const [reviewsRes, summaryRes] = await Promise.allSettled([
+      api.get('/reviews', { params: { page: 0, size: 50 } }),
+      api.get('/reviews/summary'),
+    ])
+    const reviews = reviewsRes.status === 'fulfilled'
+      ? (reviewsRes.value.data?.content ?? reviewsRes.value.data ?? [])
+      : []
+    const summary = summaryRes.status === 'fulfilled' ? summaryRes.value.data : {}
+    const orderStats = {
+      total_revenue: revenue.value.totalRevenue ?? 0,
+      order_count: revenue.value.orderCount ?? 0,
+      active_orders: activeCount.value ?? 0,
+      congestion_level: congestion.value.level ?? '알 수 없음',
+      review_count: summary.totalCount ?? reviews.length,
+      avg_rating: summary.averageRating ?? null,
+      rating_distribution: summary.ratingDistribution ?? {},
+      best_sellers: bestSellers.value.map(b => ({
+        menu_name: b.menuName,
+        quantity: b.totalQuantity ?? b.soldCount ?? 0,
+      })),
+      weekly_revenue: weeklyRevenue.value.map(d => ({
+        date: d.date,
+        revenue: d.revenue,
+        count: d.count,
+      })),
+    }
+    const res = await analyzeQuality(reviews, orderStats)
+    qualityResult.value = res.data
+    saveCacheQuality(res.data, summary.totalCount ?? 0, revenue.value.orderCount ?? 0)
+    qualityCacheInfo.value = '방금 분석'
+  } catch (e) {
+    qualityError.value = 'AI 매장 진단에 실패했습니다.'
+  } finally {
+    qualityLoading.value = false
+  }
+}
 
 // Chart components: RevenueChart, StatusDonut — handle their own computed
 
@@ -327,8 +472,9 @@ async function loadStats() {
 
 let timer = null
 let countdownTimer = null
-onMounted(() => {
-  loadStats()
+onMounted(async () => {
+  await loadStats()
+  runQualityAnalysis()
   timer = setInterval(loadStats, 30000)
   countdownTimer = setInterval(() => {
     if (refreshCountdown.value > 0) refreshCountdown.value--
@@ -344,8 +490,6 @@ onUnmounted(() => {
 
 <style scoped>
 .dash {
-  padding: 28px 32px;
-  max-width: 1320px;
   animation: page-enter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -403,7 +547,7 @@ onUnmounted(() => {
 .dd-apply:hover { filter: brightness(1.1); }
 
 .dash-title {
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 800;
   color: var(--text-primary);
   letter-spacing: -0.8px;
@@ -470,7 +614,7 @@ onUnmounted(() => {
 }
 
 .kpi-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
@@ -478,7 +622,7 @@ onUnmounted(() => {
 }
 
 .kpi-value {
-  font-size: 24px;
+  font-size: 28px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.8px;
@@ -487,7 +631,7 @@ onUnmounted(() => {
 }
 
 .kpi-value small {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--text-muted);
   margin-left: 2px;
@@ -502,7 +646,7 @@ onUnmounted(() => {
 /* ─── Charts Row ─── */
 .charts-row {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 320px;
   gap: 18px;
   margin-bottom: 18px;
 }
@@ -525,7 +669,7 @@ onUnmounted(() => {
 }
 
 .panel-header h3 {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.2px;
@@ -763,7 +907,7 @@ onUnmounted(() => {
 /* ─── Bottom Grid ─── */
 .dash-grid {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 400px;
   gap: 18px;
   align-items: start;
 }
@@ -819,7 +963,7 @@ onUnmounted(() => {
 .bar-info { flex: 1; min-width: 0; }
 
 .bar-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 5px;
@@ -845,7 +989,7 @@ onUnmounted(() => {
 .bar-fill-top { background: var(--accent-brass); }
 
 .bar-count {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
@@ -961,6 +1105,31 @@ onUnmounted(() => {
   text-align: right;
   white-space: nowrap;
 }
+
+/* ─── AI 매장 진단 ─── */
+.quality-panel { margin-top: 18px; }
+.quality-header-right { display: flex; align-items: center; gap: 10px; }
+.quality-cache-info { font-size: 11px; color: var(--text-muted); font-weight: 500; }
+.quality-result { padding-top: 12px; }
+.quality-score { display: flex; align-items: baseline; gap: 8px; margin-bottom: 20px; }
+.score-num { font-size: 40px; font-weight: 800; color: var(--accent-brass); letter-spacing: -1px; }
+.score-label { font-size: 14px; color: var(--text-muted); }
+.quality-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.quality-col-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.quality-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.quality-list li {
+  font-size: 13px; color: var(--text-secondary); padding-left: 14px; position: relative; line-height: 1.5;
+}
+.quality-list li::before { content: '·'; position: absolute; left: 0; color: var(--text-muted); }
+.spinner-xs {
+  display: inline-block; width: 12px; height: 12px;
+  border: 2px solid var(--border-strong); border-top-color: var(--accent-brass);
+  border-radius: 50%; animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
 
 /* ─── Responsive ─── */
 @media (max-width: 1000px) {

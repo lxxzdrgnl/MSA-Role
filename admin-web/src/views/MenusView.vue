@@ -1,5 +1,5 @@
 <template>
-  <div class="menus-page">
+  <div class="page menus-page">
     <div class="page-header">
       <h1 class="page-title">메뉴 관리</h1>
       <div class="header-actions">
@@ -75,10 +75,32 @@
             <td><span class="cat-badge">{{ menu.categoryName || getCategoryName(menu.categoryId) }}</span></td>
             <td class="cell-price">{{ formatPrice(menu.price) }}</td>
             <td>
-              <button class="toggle-chip" :class="menu.isSoldOut ? 'tc-danger' : 'tc-off'" @click="handleToggleSoldOut(menu)">{{ menu.isSoldOut ? '품절' : '판매중' }}</button>
+              <button
+                class="status-toggle"
+                :class="menu.isSoldOut ? 'st-soldout' : 'st-available'"
+                @click="handleToggleSoldOut(menu)"
+                :title="menu.isSoldOut ? '클릭하면 판매 재개' : '클릭하면 품절 처리'"
+              >
+                <span class="st-dot"></span>
+                {{ menu.isSoldOut ? '품절' : '판매중' }}
+                <svg class="st-icon" width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5h6M5 2l3 3-3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </td>
             <td>
-              <button class="toggle-chip" :class="menu.isBest ? 'tc-accent' : 'tc-off'" @click="handleToggleBestSeller(menu)">{{ menu.isBest ? '베스트' : '일반' }}</button>
+              <button
+                class="status-toggle"
+                :class="menu.isBest ? 'st-best' : 'st-normal'"
+                @click="handleToggleBestSeller(menu)"
+                :title="menu.isBest ? '클릭하면 베스트 해제' : '클릭하면 베스트 지정'"
+              >
+                <span class="st-dot"></span>
+                {{ menu.isBest ? '베스트' : '일반' }}
+                <svg class="st-icon" width="10" height="10" viewBox="0 0 10 10" fill="none">
+                  <path d="M2 5h6M5 2l3 3-3 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </button>
             </td>
             <td>
               <div class="action-group">
@@ -91,7 +113,13 @@
       </table>
     </div>
 
-    <AppPagination :page="page" :totalPages="totalPages" @change="changePage" />
+    <!-- Infinite scroll sentinel -->
+    <div ref="sentinel" class="scroll-sentinel">
+      <div v-if="loadingMore" class="loading-more">
+        <div class="loading-spinner"></div>
+        불러오는 중...
+      </div>
+    </div>
 
     <!-- ═══ Menu Form Modal ═══ -->
     <ModalWrapper :open="showMenuForm" :title="editMenuId ? '메뉴 수정' : '메뉴 추가'" size="lg" @close="closeMenuForm">
@@ -163,17 +191,17 @@
 
     <!-- ═══ Category Modal ═══ -->
     <CategoryModal :open="showCategoryModal" :categories="categories" @close="showCategoryModal = false" @updated="fetchCategories" />
+
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import api from '../api.js'
 import { getMenus, getCategories, toggleSoldOut, toggleBestSeller, deleteMenu } from '../api.js'
 import { formatPrice, extractListData } from '../utils/formatters.js'
 import { useAsync } from '../composables/useAsync.js'
 import ModalWrapper from '../components/ModalWrapper.vue'
-import AppPagination from '../components/AppPagination.vue'
 import CategoryModal from '../components/CategoryModal.vue'
 
 const { loading, error, run } = useAsync()
@@ -185,6 +213,9 @@ const successMsg = ref('')
 const selectedCategory = ref('')
 const page = ref(0)
 const totalPages = ref(1)
+const loadingMore = ref(false)
+const sentinel = ref(null)
+let observer = null
 
 // ── Menu form modal ──
 const showMenuForm = ref(false)
@@ -196,27 +227,54 @@ const mf = ref({ categoryId: '', name: '', price: '', description: '', tags: '',
 // ── Category modal ──
 const showCategoryModal = ref(false)
 
+
 // ── Helpers ──
 function getCategoryName(id) { return categories.value.find(c => c.id === id)?.name ?? '—' }
 function showOk(msg) { successMsg.value = msg; setTimeout(() => successMsg.value = '', 3000) }
 
 // ── Menu list ──
-function selectCategory(id) { selectedCategory.value = id; page.value = 0; fetchMenus() }
+function selectCategory(id) {
+  selectedCategory.value = id
+  page.value = 0
+  menus.value = []
+  fetchMenus()
+}
 
 async function fetchMenus() {
   await run(async () => {
     const params = { page: page.value, size: 20 }
     if (selectedCategory.value) params.category = selectedCategory.value
     const { list, totalPages: tp } = extractListData(await getMenus(params))
-    menus.value = list; totalPages.value = tp
+    menus.value = list
+    totalPages.value = tp
   }, '메뉴 목록을 불러오지 못했습니다.')
+}
+
+async function fetchMoreMenus() {
+  if (loadingMore.value || page.value >= totalPages.value - 1) return
+  loadingMore.value = true
+  try {
+    page.value++
+    const params = { page: page.value, size: 20 }
+    if (selectedCategory.value) params.category = selectedCategory.value
+    const { list, totalPages: tp } = extractListData(await getMenus(params))
+    menus.value = [...menus.value, ...list]
+    totalPages.value = tp
+  } finally {
+    loadingMore.value = false
+  }
 }
 
 async function fetchCategories() {
   try { categories.value = (await getCategories()).data || [] } catch {}
 }
 
-function changePage(p) { page.value = p; fetchMenus() }
+function setupObserver() {
+  observer = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) fetchMoreMenus()
+  }, { threshold: 0.1 })
+  if (sentinel.value) observer.observe(sentinel.value)
+}
 
 async function handleToggleSoldOut(m) {
   await run(async () => { const v = !m.isSoldOut; await toggleSoldOut(m.id, v); m.isSoldOut = v }, '품절 상태 변경 실패')
@@ -254,12 +312,12 @@ async function handleMenuSubmit() {
   }, '저장 실패')
 }
 
-onMounted(() => { fetchCategories(); fetchMenus() })
+onMounted(() => { fetchCategories(); fetchMenus(); setupObserver() })
+onUnmounted(() => { observer?.disconnect() })
 </script>
 
 <style scoped>
 .menus-page {
-  padding: 28px 32px;
   animation: page-enter 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -275,7 +333,7 @@ onMounted(() => { fetchCategories(); fetchMenus() })
   margin-bottom: 20px;
 }
 
-.page-title { font-size: 24px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
+.page-title { font-size: 28px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
 .header-actions { display: flex; gap: 10px; }
 
 /* ── Category Tabs ── */
@@ -294,12 +352,12 @@ onMounted(() => { fetchCategories(); fetchMenus() })
 }
 
 .cat-tab {
-  padding: 8px 18px;
+  padding: 9px 20px;
   border-radius: 20px;
   border: 1px solid var(--border);
   background: var(--bg-surface);
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all var(--transition-fast);
@@ -342,7 +400,7 @@ onMounted(() => { fetchCategories(); fetchMenus() })
 .col-img { width: 72px; text-align: center; }
 
 .menu-thumb {
-  width: 48px; height: 48px;
+  width: 56px; height: 56px;
   object-fit: cover;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -351,7 +409,7 @@ onMounted(() => { fetchCategories(); fetchMenus() })
 }
 
 .menu-thumb-ph {
-  width: 48px; height: 48px;
+  width: 56px; height: 56px;
   border-radius: 8px;
   background: var(--bg-hover);
   border: 1px dashed var(--border-strong);
@@ -375,21 +433,71 @@ onMounted(() => { fetchCategories(); fetchMenus() })
   color: var(--accent-brass);
 }
 
-/* ── Toggle Chips ── */
-.toggle-chip {
-  padding: 4px 12px;
-  border-radius: 20px;
-  border: none;
-  font-size: 12px;
+/* ── Status Toggle ── */
+.status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px 6px 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
   transition: all var(--transition-fast);
   font-family: inherit;
+  white-space: nowrap;
 }
-.tc-off { background: var(--bg-hover); color: var(--text-muted); }
-.tc-off:hover { background: var(--bg-active); color: var(--text-secondary); }
-.tc-danger { background: var(--status-danger-bg); color: var(--status-danger-text); }
-.tc-accent { background: var(--accent-brass-glow); color: var(--accent-brass); }
+
+.status-toggle:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.status-toggle:active {
+  transform: translateY(0);
+}
+
+.st-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.st-icon {
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.st-available {
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.3);
+  color: #4ade80;
+}
+.st-available .st-dot { background: #4ade80; }
+
+.st-soldout {
+  background: var(--status-danger-bg);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: var(--status-danger-text);
+}
+.st-soldout .st-dot { background: var(--status-danger-text); }
+
+.st-best {
+  background: var(--accent-brass-glow);
+  border-color: var(--accent-brass-border);
+  color: var(--accent-brass);
+}
+.st-best .st-dot { background: var(--accent-brass); }
+
+.st-normal {
+  background: var(--bg-hover);
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+.st-normal .st-dot { background: var(--text-muted); }
 
 .action-group { display: flex; gap: 6px; }
 
@@ -448,5 +556,19 @@ onMounted(() => { fetchCategories(); fetchMenus() })
   color: var(--accent-brass);
 }
 
-/* Category modal styles → CategoryModal.vue */
+/* ── Infinite scroll ── */
+.scroll-sentinel {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
 </style>

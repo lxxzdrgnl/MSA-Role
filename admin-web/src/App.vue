@@ -12,14 +12,14 @@
           </svg>
         </div>
         <div class="logo-text">
-          <span class="logo-title">Brasserie</span>
+          <span class="logo-title">Rheon Kitchen</span>
           <span class="logo-sub">Admin Console</span>
         </div>
       </div>
 
       <nav class="sidebar-nav">
         <router-link to="/dashboard" class="nav-item">
-          <svg class="nav-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 18 18" fill="none">
             <rect x="1" y="1" width="6" height="7" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
             <rect x="11" y="1" width="6" height="4" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
             <rect x="1" y="12" width="6" height="5" rx="1.5" stroke="currentColor" stroke-width="1.4"/>
@@ -29,7 +29,7 @@
         </router-link>
 
         <router-link to="/orders" class="nav-item" @click="clearBadge">
-          <svg class="nav-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 18 18" fill="none">
             <path d="M3 5H15M3 9H15M3 13H10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
           <span>주문 관리</span>
@@ -37,11 +37,18 @@
         </router-link>
 
         <router-link to="/menus" class="nav-item">
-          <svg class="nav-icon" width="18" height="18" viewBox="0 0 18 18" fill="none">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 18 18" fill="none">
             <rect x="2" y="2" width="14" height="14" rx="3" stroke="currentColor" stroke-width="1.4"/>
             <path d="M6 7H12M6 11H10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
           </svg>
           <span>메뉴 관리</span>
+        </router-link>
+
+        <router-link to="/reviews" class="nav-item">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 18 18" fill="none">
+            <path d="M9 2L11 7H16L12 10L13.5 15L9 12L4.5 15L6 10L2 7H7L9 2Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>
+          <span>리뷰 관리</span>
         </router-link>
 
       </nav>
@@ -176,6 +183,7 @@ onUnmounted(() => {
   left: 0;
   bottom: 0;
   z-index: 100;
+  font-size: 15px;
 }
 
 .sidebar-header {
@@ -196,7 +204,7 @@ onUnmounted(() => {
 }
 
 .logo-title {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 700;
   color: var(--text-primary);
   letter-spacing: -0.5px;
@@ -204,7 +212,7 @@ onUnmounted(() => {
 }
 
 .logo-sub {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
   letter-spacing: 0.5px;
@@ -223,11 +231,11 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 11px 14px;
+  padding: 12px 14px;
   border-radius: var(--radius-md);
   color: var(--text-secondary);
   text-decoration: none;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   transition: all var(--transition-fast);
   position: relative;

@@ -50,7 +50,7 @@
         </form>
 
         <div class="login-footer">
-          <span>Restaurant Management System</span>
+          <span>Rheon Kitchen Management</span>
         </div>
       </div>
     </div>
