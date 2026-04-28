@@ -23,7 +23,7 @@ export function useCart() {
     if (idx >= 0) {
       cartItems.value[idx].quantity++
     } else {
-      cartItems.value.push({ menuId: id, name: menu.name, price: menu.price, quantity: 1 })
+      cartItems.value.push({ menuId: id, name: menu.name, price: menu.price, quantity: 1, imageUrl: menu.imageUrl || '' })
     }
     save()
   }

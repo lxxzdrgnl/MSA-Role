@@ -7,7 +7,7 @@
       <div class="brand">
         <span class="brand-icon">🔥</span>
         <div>
-          <p class="brand-sub">Seoul Kitchen</p>
+          <p class="brand-sub">Rheon Kitchen</p>
           <h1 class="display brand-title">JOIN</h1>
         </div>
       </div>

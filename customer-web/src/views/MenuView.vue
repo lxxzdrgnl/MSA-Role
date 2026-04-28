@@ -5,7 +5,7 @@
       <div class="sidebar-brand">
         <div class="brand-mark">炎</div>
         <div>
-          <div class="brand-sub">Seoul Kitchen</div>
+          <div class="brand-sub">Rheon Kitchen</div>
           <div class="display brand-title">MENU</div>
         </div>
       </div>
@@ -92,7 +92,7 @@
             <img v-if="menu.imageUrl" :src="menu.imageUrl" :alt="menu.name" class="card-img" @error="e => e.target.style.display='none'" />
             <div v-else class="card-img-empty"><span>{{ categoryEmoji(menu.categoryName) }}</span></div>
             <div class="card-badges">
-              <span v-if="menu.isBestSeller" class="pill pill-best">BEST</span>
+              <span v-if="menu.isBest" class="pill pill-best">BEST</span>
               <span v-if="menu.isSoldOut" class="pill pill-sold">품절</span>
               <span v-if="waitTimes[menu.id]" class="pill pill-wait">⏱ {{ waitTimes[menu.id] }}분</span>
             </div>
@@ -147,39 +147,55 @@
     <!-- ═══ ORDER MODAL ════════════════════════════════════ -->
     <transition name="modal-fade">
       <div v-if="showOrderModal" class="modal-backdrop" @click.self="showOrderModal = false">
-        <div class="order-modal">
-          <div class="order-modal-head">
-            <h3 class="display order-modal-title">Order</h3>
+        <div class="om">
+          <!-- Header -->
+          <div class="om-head">
+            <div class="om-head-left">
+              <span class="om-tag">YOUR ORDER</span>
+              <h3 class="display om-title">주문 확인</h3>
+            </div>
             <button class="modal-x" @click="showOrderModal = false">✕</button>
           </div>
 
-          <div class="order-items">
-            <div v-for="item in cartItems" :key="item.menuId" class="order-item">
-              <div class="order-item-info">
-                <span class="order-item-name">{{ item.name }}</span>
-                <span class="order-item-price mono">{{ formatPrice(item.price) }}원</span>
+          <!-- Items -->
+          <div class="om-items">
+            <div v-for="(item, idx) in cartItems" :key="item.menuId" class="om-item" :style="{ animationDelay: `${idx * 50}ms` }">
+              <div class="om-item-visual">
+                <img v-if="item.imageUrl" :src="item.imageUrl" alt="" class="om-item-img" @error="e => { e.target.parentElement.classList.add('no-img'); e.target.style.display='none' }" />
+                <div v-else class="om-item-emoji">🍽</div>
               </div>
-              <div class="order-item-qty">
-                <button class="qty-btn" @click="changeQty(item, -1)">−</button>
-                <span class="qty-num">{{ item.quantity }}</span>
-                <button class="qty-btn" @click="changeQty(item, 1)">+</button>
+              <div class="om-item-detail">
+                <span class="om-item-name">{{ item.name }}</span>
+                <span class="om-item-unit mono">{{ formatPrice(item.price) }}원</span>
+              </div>
+              <span class="om-item-total mono">{{ formatPrice(item.price * item.quantity) }}원</span>
+              <div class="om-qty">
+                <button class="om-qty-btn" @click="changeQty(item, -1)">
+                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M3 6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
+                <span class="om-qty-num">{{ item.quantity }}</span>
+                <button class="om-qty-btn" @click="changeQty(item, 1)">
+                  <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 3v6M3 6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                </button>
               </div>
             </div>
           </div>
 
-          <div class="order-divider"></div>
-
-          <div class="order-total-row">
-            <span>총 금액</span>
-            <span class="order-total-price mono">{{ formatPrice(cartTotalPrice) }}원</span>
+          <!-- Footer -->
+          <div class="om-footer">
+            <div class="om-total">
+              <span class="om-total-label">총 결제금액</span>
+              <span class="om-total-price mono">{{ formatPrice(cartTotalPrice) }}<small>원</small></span>
+            </div>
+            <button class="om-submit" :disabled="ordering || cartItems.length === 0" @click="placeOrder">
+              <span v-if="ordering" class="spinner"></span>
+              <template v-else>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M3 3h1.5l1 9h8l1.5-6H5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="15" r="1" fill="currentColor"/><circle cx="13" cy="15" r="1" fill="currentColor"/></svg>
+                주문하기
+              </template>
+            </button>
+            <div v-if="orderError" class="om-error">{{ orderError }}</div>
           </div>
-
-          <button class="btn-place-order" :disabled="ordering || cartItems.length === 0" @click="placeOrder">
-            <span v-if="ordering" class="spinner"></span>
-            {{ ordering ? '주문 중...' : `${formatPrice(cartTotalPrice)}원 주문하기` }}
-          </button>
-
-          <div v-if="orderError" class="alert-error" style="margin-top:12px">{{ orderError }}</div>
         </div>
       </div>
     </transition>
@@ -440,26 +456,142 @@ async function placeOrder() {
 @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 /* ═══ ORDER MODAL ═══ */
-.order-modal { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: var(--radius-xl); width: 440px; max-height: 80vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
-.order-modal-head { display: flex; align-items: center; justify-content: space-between; padding: 24px 24px 16px; border-bottom: 1px solid var(--border); }
-.order-modal-title { font-size: 32px; color: var(--text-primary); margin: 0; }
-.order-items { padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; }
-.order-item { display: flex; align-items: center; justify-content: space-between; }
-.order-item-info { display: flex; flex-direction: column; gap: 2px; }
-.order-item-name { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-.order-item-price { font-size: 12px; color: var(--text-muted); }
-.order-item-qty { display: flex; align-items: center; gap: 0; background: var(--bg-subtle); border-radius: var(--radius-sm); overflow: hidden; }
-.qty-btn { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: transparent; border: none; color: var(--text-primary); font-size: 16px; cursor: pointer; transition: var(--transition); }
-.qty-btn:hover { background: var(--accent-dim); color: var(--accent); }
-.qty-num { width: 28px; text-align: center; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.om {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  width: 480px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  animation: omIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes omIn { from { opacity: 0; transform: translateY(20px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
-.order-divider { height: 1px; background: var(--border); margin: 0 24px; }
-.order-total-row { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; font-size: 15px; color: var(--text-secondary); }
-.order-total-price { font-size: 20px; font-weight: 700; color: var(--accent-soft); }
+.om-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 28px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.om-head-left { display: flex; flex-direction: column; gap: 2px; }
+.om-tag {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+  color: var(--accent); text-transform: uppercase;
+}
+.om-title { font-size: 22px; color: var(--text-primary); margin: 0; font-weight: 700; letter-spacing: -0.5px; }
 
-.btn-place-order { width: calc(100% - 48px); margin: 0 24px 24px; padding: 14px; background: var(--accent); color: #fff; border: none; border-radius: var(--radius-md); font-size: 15px; font-weight: 700; font-family: inherit; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 8px; }
-.btn-place-order:hover:not(:disabled) { background: var(--accent-soft); box-shadow: 0 4px 20px rgba(212,134,60,0.4); }
-.btn-place-order:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Items */
+.om-items {
+  flex: 1; overflow-y: auto; padding: 8px 12px;
+}
+
+.om-item {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  transition: background 0.15s;
+  animation: omItemIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes omItemIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+
+.om-item:hover { background: rgba(255,255,255,0.02); }
+
+.om-item-visual {
+  width: 60px; height: 60px; border-radius: 12px; overflow: hidden;
+  flex-shrink: 0; position: relative;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+}
+.om-item-img {
+  width: 100%; height: 100%; object-fit: cover;
+  display: block;
+}
+.om-item-emoji {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; opacity: 0.5;
+}
+.om-item-visual.no-img .om-item-emoji { display: flex; }
+
+.om-item-detail {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.om-item-name {
+  font-size: 14px; font-weight: 600; color: var(--text-primary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.om-item-unit { font-size: 13px; color: var(--text-muted); }
+
+.om-item-total {
+  font-size: 14px; font-weight: 700; color: var(--accent-soft);
+  flex-shrink: 0; min-width: 70px; text-align: right;
+}
+
+.om-qty {
+  display: flex; align-items: center;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.om-qty-btn {
+  width: 30px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none;
+  color: var(--text-secondary); cursor: pointer;
+  transition: var(--transition);
+}
+.om-qty-btn:hover { background: var(--accent-dim); color: var(--accent); }
+.om-qty-num {
+  width: 28px; text-align: center;
+  font-size: 13px; font-weight: 700; color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+/* Footer */
+.om-footer {
+  padding: 20px 28px 24px;
+  border-top: 1px solid var(--border);
+  background: linear-gradient(to top, rgba(212,134,60,0.03), transparent);
+}
+
+.om-total {
+  display: flex; align-items: baseline; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.om-total-label { font-size: 14px; color: var(--text-secondary); font-weight: 500; }
+.om-total-price {
+  font-size: 22px; font-weight: 800; color: var(--accent-soft);
+  letter-spacing: -0.5px; line-height: 1;
+}
+.om-total-price small {
+  font-size: 14px; font-weight: 500; color: var(--text-muted);
+  margin-left: 2px; letter-spacing: 0;
+}
+
+.om-submit {
+  width: 100%; padding: 15px;
+  background: var(--accent); color: #fff;
+  border: none; border-radius: var(--radius-md);
+  font-size: 15px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  box-shadow: 0 2px 16px rgba(212,134,60,0.25);
+  letter-spacing: -0.2px;
+}
+.om-submit:hover:not(:disabled) {
+  background: var(--accent-soft);
+  box-shadow: 0 6px 28px rgba(212,134,60,0.4);
+  transform: translateY(-1px);
+}
+.om-submit:active:not(:disabled) { transform: translateY(0); }
+.om-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+.om-error {
+  margin-top: 12px; padding: 10px 14px;
+  background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.15);
+  border-radius: var(--radius-sm); font-size: 13px; color: #f87171;
+}
 
 /* ═══ TOAST ═══ */
 .toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: rgba(26,25,24,0.95); border: 1px solid var(--border); backdrop-filter: blur(12px); color: var(--text-primary); padding: 10px 20px; border-radius: 99px; font-size: 13px; font-weight: 500; z-index: 500; display: flex; align-items: center; gap: 7px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
