@@ -29,6 +29,11 @@ public class ReviewRepository {
         review.setRating(rs.getInt("rating"));
         review.setContent(rs.getString("content"));
         review.setIsAiGenerated(rs.getInt("is_ai_generated"));
+        review.setAdminReply(rs.getString("admin_reply"));
+        String replyAt = rs.getString("admin_reply_at");
+        if (replyAt != null) {
+            review.setAdminReplyAt(LocalDateTime.parse(replyAt.replace(" ", "T")));
+        }
         String createdAt = rs.getString("created_at");
         if (createdAt != null) {
             review.setCreatedAt(LocalDateTime.parse(createdAt.replace(" ", "T")));
@@ -44,7 +49,7 @@ public class ReviewRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO reviews (user_id, order_id, menu_id, menu_name, rating, content, is_ai_generated) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT INTO reviews (user_id, order_id, menu_id, menu_name, rating, content, is_ai_generated, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, review.getUserId());
@@ -54,6 +59,7 @@ public class ReviewRepository {
             ps.setInt(5, review.getRating());
             ps.setString(6, review.getContent());
             ps.setInt(7, review.getIsAiGenerated() != null ? review.getIsAiGenerated() : 0);
+            ps.setString(8, LocalDateTime.now().toString());
             return ps;
         }, keyHolder);
         review.setId(keyHolder.getKey().longValue());
@@ -133,6 +139,13 @@ public class ReviewRepository {
                 "SELECT COUNT(*) FROM reviews WHERE user_id = ?", Long.class, userId
         );
         return count != null ? count : 0;
+    }
+
+    public void updateAdminReply(Long id, String reply) {
+        jdbcTemplate.update(
+                "UPDATE reviews SET admin_reply = ?, admin_reply_at = ? WHERE id = ?",
+                reply, LocalDateTime.now().toString(), id
+        );
     }
 
     public void deleteById(Long id) {

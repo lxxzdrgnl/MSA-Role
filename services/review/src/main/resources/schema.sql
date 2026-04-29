@@ -7,5 +7,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     rating          INTEGER NOT NULL,
     content         TEXT NOT NULL,
     is_ai_generated INTEGER DEFAULT 0,
+    admin_reply     TEXT,
+    admin_reply_at  DATETIME,
     created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
 );

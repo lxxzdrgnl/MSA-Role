@@ -12,6 +12,8 @@ public class Review {
     private Integer rating;
     private String content;
     private Integer isAiGenerated;
+    private String adminReply;
+    private LocalDateTime adminReplyAt;
     private LocalDateTime createdAt;
 
     public Review() {}
@@ -49,6 +51,12 @@ public class Review {
 
     public Integer getIsAiGenerated() { return isAiGenerated; }
     public void setIsAiGenerated(Integer isAiGenerated) { this.isAiGenerated = isAiGenerated; }
+
+    public String getAdminReply() { return adminReply; }
+    public void setAdminReply(String adminReply) { this.adminReply = adminReply; }
+
+    public LocalDateTime getAdminReplyAt() { return adminReplyAt; }
+    public void setAdminReplyAt(LocalDateTime adminReplyAt) { this.adminReplyAt = adminReplyAt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

@@ -66,6 +66,18 @@ public class ReviewController {
         return ResponseEntity.ok(reviewService.getReviewById(id));
     }
 
+    @Operation(summary = "관리자 답변", description = "리뷰에 관리자 답변을 등록합니다. ADMIN 권한 필요.")
+    @PatchMapping("/{id}/reply")
+    public ResponseEntity<ReviewResponse> replyToReview(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Role") String role,
+            @RequestBody java.util.Map<String, String> body) {
+        if (!"ADMIN".equals(role)) {
+            throw new SecurityException("관리자 권한이 필요합니다");
+        }
+        return ResponseEntity.ok(reviewService.replyToReview(id, body.get("reply")));
+    }
+
     @Operation(summary = "리뷰 삭제", description = "본인 리뷰 또는 ADMIN만 삭제 가능합니다.")
     @ApiResponses({
         @ApiResponse(responseCode = "204", description = "삭제 성공"),
