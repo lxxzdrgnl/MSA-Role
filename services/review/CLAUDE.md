@@ -26,11 +26,12 @@
 | GET | `/api/reviews/ai-summary` | AI 리뷰 요약 (30분 캐시, 최소 3개 리뷰) | 불필요 |
 | GET | `/api/reviews/my` | 내 리뷰 목록 | X-User-Id |
 | POST | `/api/reviews/generate` | AI 리뷰 초안 생성 | 불필요 |
+| PATCH | `/api/reviews/{id}/reply` | 관리자 답변 등록/수정 | ADMIN |
 
 ## 데이터 모델
 
 ### reviews 테이블
-- `id`, `user_id`, `order_id`, `menu_id`, `menu_name`, `rating` (1-5), `content`, `is_ai_generated`, `created_at`
+- `id`, `user_id`, `order_id`, `menu_id`, `menu_name`, `rating` (1-5), `content`, `is_ai_generated`, `admin_reply`, `admin_reply_at`, `created_at`
 
 ## AI 연동
 - **리뷰 생성**: AI Review Writer로 초안 생성 → AI Validation으로 검증

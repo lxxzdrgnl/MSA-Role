@@ -16,23 +16,23 @@ router = APIRouter(prefix="/api/operations", tags=["operations"])
 
 @router.get("/congestion", response_model=CongestionResponse, responses=ERROR_RESPONSES)
 async def get_congestion():
-    """Get current restaurant congestion status."""
+    """현재 매장 혼잡도 조회"""
     return await congestion_service.get_congestion()
 
 
 @router.get("/congestion/menu/{menu_id}", response_model=MenuCongestionResponse, responses=ERROR_RESPONSES)
 async def get_menu_congestion(menu_id: int):
-    """Get estimated preparation time for a specific menu item."""
+    """특정 메뉴 예상 조리 시간 조회"""
     return await congestion_service.get_menu_congestion(menu_id)
 
 
 @router.post("/new-menu-suggest", response_model=NewMenuResponse, responses=ERROR_RESPONSES)
 async def suggest_new_menu(request: NewMenuSuggestRequest):
-    """Suggest new menu items based on order history."""
+    """주문 이력 기반 신메뉴 제안"""
     return operations_service.suggest_new_menu(request)
 
 
 @router.post("/quality-analysis", response_model=QualityResponse, responses=ERROR_RESPONSES)
 async def analyze_quality(request: QualityAnalysisRequest):
-    """Analyze overall service quality."""
+    """서비스 품질 종합 분석"""
     return operations_service.analyze_quality(request)

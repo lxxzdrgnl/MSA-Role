@@ -13,7 +13,7 @@
 - **[Gateway Service](services/gateway/CLAUDE.md)** — API Gateway, 라우팅, JWT 필터, WebSocket (포트 8080)
 - **[Menu Service](services/menu/CLAUDE.md)** — 메뉴/카테고리 CRUD, 이미지 업로드 (포트 8082)
 - **[Order Service](services/order/CLAUDE.md)** — 주문 생성/관리, 매출 통계, 베스트셀러 (포트 8083)
-- **[Review Service](services/review/CLAUDE.md)** — 리뷰 CRUD, AI 리뷰 생성/분석 (포트 8084)
+- **[Review Service](services/review/CLAUDE.md)** — 리뷰 CRUD, 관리자 답변, AI 리뷰 생성/분석 (포트 8084)
 
 ### AI Services (FastAPI / Python)
 - **[AI Recommendation](ai-services/recommendation/CLAUDE.md)** — RAG 기반 메뉴 추천, ChromaDB 벡터 검색 (포트 8001)
@@ -22,8 +22,8 @@
 - **[AI Validation](ai-services/validation/CLAUDE.md)** — 입력 검증, 환각 탐지 (포트 8004)
 
 ### Frontend (Vue 3 / Vite)
-- **[Admin Web](admin-web/CLAUDE.md)** — 관리자 대시보드 (SVG 차트), 주문 관리 (신규주문/목록 탭), 메뉴/카테고리 CRUD (모달), 컴포넌트/유틸/composable 분리 구조
-- **[Customer Web](customer-web/CLAUDE.md)** — 고객 메뉴 탐색, 장바구니, 주문
+- **[Admin Web](admin-web/CLAUDE.md)** — 관리자 대시보드 (SVG 차트), 주문 관리 (신규주문/목록 탭), 메뉴/카테고리 CRUD (모달), 리뷰 관리 (필터/답변), 컴포넌트/유틸/composable 분리 구조
+- **[Customer Web](customer-web/CLAUDE.md)** — 고객 메뉴 탐색, 장바구니 (이미지 포함 주문 모달), 주문 내역 (카드 그리드), 리뷰 (사장님 답변 표시)
 
 ## 서비스 간 통신 흐름
 
