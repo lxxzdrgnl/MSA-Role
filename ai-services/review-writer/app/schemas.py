@@ -5,6 +5,7 @@ class GenerateRequest(BaseModel):
     menu_name: str
     keywords: list[str]
     rating: int
+    feedback: str | None = None
 
 
 class GenerateResponse(BaseModel):

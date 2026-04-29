@@ -45,18 +45,19 @@ def generate_review(request: GenerateRequest) -> GenerateResponse:
     rating = max(1, min(5, request.rating))
 
     try:
+        user_content = (
+            f"메뉴: {request.menu_name}\n"
+            f"키워드: {', '.join(request.keywords)}\n"
+            f"별점: {rating}점"
+        )
+        if request.feedback:
+            user_content += f"\n\n[이전 생성 결과에 대한 피드백]\n{request.feedback}\n위 피드백을 반영하여 다시 작성해주세요."
+
         response = client.chat.completions.create(
             model=settings.OPENAI_MODEL,
             messages=[
                 {"role": "system", "content": GENERATE_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        f"메뉴: {request.menu_name}\n"
-                        f"키워드: {', '.join(request.keywords)}\n"
-                        f"별점: {rating}점"
-                    ),
-                },
+                {"role": "user", "content": user_content},
             ],
             temperature=0.7,
             max_tokens=500,

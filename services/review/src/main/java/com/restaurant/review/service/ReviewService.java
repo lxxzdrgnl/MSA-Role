@@ -204,6 +204,15 @@ public class ReviewService {
         return ReviewResponse.from(review);
     }
 
+    public ReviewResponse replyToReview(Long id, String reply) {
+        Review review = reviewRepository.findById(id)
+                .orElseThrow(() -> new NoSuchElementException("Review not found with id: " + id));
+        reviewRepository.updateAdminReply(id, reply);
+        review.setAdminReply(reply);
+        review.setAdminReplyAt(java.time.LocalDateTime.now());
+        return ReviewResponse.from(review);
+    }
+
     public void deleteReview(Long id, Long userId, String userRole) {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new NoSuchElementException("Review not found with id: " + id));
@@ -299,52 +308,70 @@ public class ReviewService {
         }
     }
 
+    private static final int MAX_GENERATE_RETRIES = 3;
+
     public AiGenerateResponse generateAiReview(AiGenerateRequest request) {
         try {
-            // step 1: input validation skipped — negative reviews are valid
+            String feedback = null;
+            String lastDraft = "";
+            int lastRating = request.getRating();
 
-            // step 2: call AI Review Writer to generate draft
-            Map<String, Object> generateRequest = new HashMap<>();
-            generateRequest.put("menu_name", request.getMenuName());
-            generateRequest.put("rating", request.getRating());
-            generateRequest.put("keywords", request.getKeywords());
-
-            Map<String, Object> generateResponse = restTemplate.postForObject(
-                    aiReviewWriterUrl + "/reviews/generate",
-                    generateRequest,
-                    Map.class
-            );
-
-            if (generateResponse == null) {
-                return new AiGenerateResponse("맛있게 잘 먹었습니다.", request.getRating());
-            }
-
-            String draft = (String) generateResponse.getOrDefault("draft", "맛있게 잘 먹었습니다.");
-            Integer rating = generateResponse.get("rating") != null
-                    ? ((Number) generateResponse.get("rating")).intValue()
-                    : request.getRating();
-
-            // step 3: validate output (skip on failure)
-            try {
-                Map<String, Object> validationOutput = new HashMap<>();
-                validationOutput.put("text", draft);
-                validationOutput.put("type", "review_generate");
-                validationOutput.put("context", request.getMenuName());
-                Map<String, Object> outputValidation = restTemplate.postForObject(
-                        aiValidationUrl + "/validation/output", validationOutput, Map.class);
-                if (outputValidation != null && Boolean.FALSE.equals(outputValidation.get("is_valid"))) {
-                    return new AiGenerateResponse("맛있게 잘 먹었습니다.", request.getRating());
+            for (int attempt = 0; attempt < MAX_GENERATE_RETRIES; attempt++) {
+                Map<String, Object> generateRequest = new HashMap<>();
+                generateRequest.put("menu_name", request.getMenuName());
+                generateRequest.put("rating", request.getRating());
+                generateRequest.put("keywords", request.getKeywords());
+                if (feedback != null) {
+                    generateRequest.put("feedback", feedback);
                 }
-            } catch (Exception e) {
-                log.warn("Output validation unavailable, skipping: {}", e.getMessage());
+
+                Map<String, Object> generateResponse = restTemplate.postForObject(
+                        aiReviewWriterUrl + "/reviews/generate",
+                        generateRequest, Map.class
+                );
+
+                if (generateResponse == null) continue;
+
+                String draft = (String) generateResponse.getOrDefault("draft", "");
+                Integer rating = generateResponse.get("rating") != null
+                        ? ((Number) generateResponse.get("rating")).intValue()
+                        : request.getRating();
+
+                if (draft.isBlank()) continue;
+
+                lastDraft = draft;
+                lastRating = rating;
+
+                // 검증
+                try {
+                    Map<String, Object> validationReq = new HashMap<>();
+                    validationReq.put("ai_response", draft);
+                    validationReq.put("user_input", request.getMenuName() + " " + request.getRating() + "점 리뷰");
+                    validationReq.put("context", request.getMenuName());
+
+                    Map<String, Object> validationRes = restTemplate.postForObject(
+                            aiValidationUrl + "/validation/output", validationReq, Map.class);
+
+                    if (validationRes != null && Boolean.FALSE.equals(validationRes.get("is_valid"))) {
+                        feedback = (String) validationRes.getOrDefault("reason", "부적절한 내용이 포함되어 있습니다.");
+                        log.info("AI review validation failed (attempt {}): {}", attempt + 1, feedback);
+                        continue;
+                    }
+                } catch (Exception e) {
+                    log.warn("Output validation unavailable, skipping: {}", e.getMessage());
+                }
+
+                return new AiGenerateResponse(draft, rating);
             }
 
-            return new AiGenerateResponse(draft, rating);
+            // 최대 재시도 초과 → 마지막 생성물 반환
+            log.warn("AI review validation failed after {} retries, returning last draft", MAX_GENERATE_RETRIES);
+            return new AiGenerateResponse(lastDraft, lastRating);
         } catch (IllegalArgumentException e) {
             throw e;
         } catch (Exception e) {
             log.warn("AI review generation failed: {}", e.getMessage());
-            return new AiGenerateResponse("맛있게 잘 먹었습니다.", request.getRating());
+            return new AiGenerateResponse("", request.getRating());
         }
     }
 
