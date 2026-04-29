@@ -4,12 +4,14 @@ import LoginView from './views/LoginView.vue'
 import DashboardView from './views/DashboardView.vue'
 import OrdersView from './views/OrdersView.vue'
 import MenusView from './views/MenusView.vue'
+import ReviewsView from './views/ReviewsView.vue'
 
 const routes = [
   { path: '/login', component: LoginView, meta: { public: true } },
   { path: '/', redirect: '/orders' },
   { path: '/orders', component: OrdersView },
   { path: '/menus', component: MenusView },
+  { path: '/reviews', component: ReviewsView },
   { path: '/dashboard', component: DashboardView },
   { path: '/:pathMatch(.*)*', redirect: '/orders' },
 ]

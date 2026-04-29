@@ -95,8 +95,20 @@ export const deleteCategory = (id) =>
 export const getCongestion = () =>
   api.get('/operations/congestion')
 
+export const analyzeQuality = (reviews, orderStats) =>
+  api.post('/operations/quality-analysis', { reviews, order_stats: orderStats }, { timeout: 30000 })
+
 // ── Reviews ───────────────────────────────────────────
+export const getReviews = (params) =>
+  api.get('/reviews', { params })
+
 export const getReviewSummary = (menuId) =>
   api.get('/reviews/summary', { params: { menuId } })
+
+export const deleteReview = (id) =>
+  api.delete(`/reviews/${id}`)
+
+export const replyToReview = (id, reply) =>
+  api.patch(`/reviews/${id}/reply`, { reply })
 
 export default api
