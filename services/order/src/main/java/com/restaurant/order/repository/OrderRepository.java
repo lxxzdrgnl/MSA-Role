@@ -45,12 +45,15 @@ public class OrderRepository {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbcTemplate.update(connection -> {
             PreparedStatement ps = connection.prepareStatement(
-                    "INSERT INTO orders (user_id, status, total_price) VALUES (?, ?, ?)",
+                    "INSERT INTO orders (user_id, status, total_price, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                     Statement.RETURN_GENERATED_KEYS
             );
             ps.setLong(1, order.getUserId());
             ps.setString(2, order.getStatus());
             ps.setInt(3, order.getTotalPrice());
+            String now = java.time.LocalDateTime.now().toString();
+            ps.setString(4, now);
+            ps.setString(5, now);
             return ps;
         }, keyHolder);
         order.setId(keyHolder.getKey().longValue());

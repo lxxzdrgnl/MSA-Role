@@ -27,6 +27,13 @@ public class RouteConfig {
     @Value("${services.ai-operations-url}")
     private String aiOperationsUrl;
 
+    @Value("${services.ai-review-writer-url:http://localhost:8002}")
+    private String aiReviewWriterUrl;
+
+    @Value("${services.ai-validation-url:http://localhost:8004}")
+    private String aiValidationUrl;
+
+
     @Bean
     public RestTemplate restTemplate() {
         HttpComponentsClientHttpRequestFactory factory = new HttpComponentsClientHttpRequestFactory();
@@ -38,6 +45,10 @@ public class RouteConfig {
     public String getMenuUrl() { return menuUrl; }
     public String getOrderUrl() { return orderUrl; }
     public String getReviewUrl() { return reviewUrl; }
+    public String getAiRecommendationUrl() { return aiRecommendationUrl; }
+    public String getAiReviewWriterUrl() { return aiReviewWriterUrl; }
+    public String getAiOperationsUrl() { return aiOperationsUrl; }
+    public String getAiValidationUrl() { return aiValidationUrl; }
 
     public String resolveServiceUrl(String path) {
         if (path.startsWith("/api/auth")) return authUrl;

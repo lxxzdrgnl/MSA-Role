@@ -8,10 +8,33 @@ spring:
     multipart:
       enabled: false
 
+springdoc:
+  swagger-ui:
+    urls:
+      - name: Auth Service
+        url: /docs/auth/v3/api-docs
+      - name: Menu Service
+        url: /docs/menu/v3/api-docs
+      - name: Order Service
+        url: /docs/order/v3/api-docs
+      - name: Review Service
+        url: /docs/review/v3/api-docs
+      - name: AI Recommendation
+        url: /docs/ai-recommendation/v3/api-docs
+      - name: AI Review Writer
+        url: /docs/ai-review-writer/v3/api-docs
+      - name: AI Operations
+        url: /docs/ai-operations/v3/api-docs
+      - name: AI Validation
+        url: /docs/ai-validation/v3/api-docs
+    urls-primary-name: Auth Service
+
 services:
   auth-url: ${AUTH_SERVICE_URL:http://localhost:8081}
   menu-url: ${MENU_SERVICE_URL:http://localhost:8082}
   order-url: ${ORDER_SERVICE_URL:http://localhost:8083}
   review-url: ${REVIEW_SERVICE_URL:http://localhost:8084}
   ai-recommendation-url: ${AI_RECOMMENDATION_URL:http://localhost:8001}
+  ai-review-writer-url: ${AI_REVIEW_WRITER_URL:http://localhost:8002}
   ai-operations-url: ${AI_OPERATIONS_URL:http://localhost:8003}
+  ai-validation-url: ${AI_VALIDATION_URL:http://localhost:8004}

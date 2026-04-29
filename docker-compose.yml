@@ -132,7 +132,9 @@ services:
       - ORDER_SERVICE_URL=http://order-service:8083
       - REVIEW_SERVICE_URL=http://review-service:8084
       - AI_RECOMMENDATION_URL=http://ai-recommendation:8000
+      - AI_REVIEW_WRITER_URL=http://ai-review-writer:8000
       - AI_OPERATIONS_URL=http://ai-operations:8000
+      - AI_VALIDATION_URL=http://ai-validation:8000
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/api/menus || exit 1"]
       interval: 30s
@@ -197,6 +199,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - ORDER_SERVICE_URL=http://order-service:8083
       - MENU_SERVICE_URL=http://menu-service:8082
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8000/health || exit 1"]
       interval: 30s

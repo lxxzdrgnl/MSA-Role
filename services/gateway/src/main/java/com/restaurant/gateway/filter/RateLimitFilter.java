@@ -78,7 +78,6 @@ public class RateLimitFilter implements Filter {
             log.warn("Rate limit exceeded for {} on path {} (bucket={}, limit={})",
                     clientIp, path, bucket, limit);
 
-            HttpServletRequest httpRequest = (HttpServletRequest) request;
             HttpServletResponse httpResponse = (HttpServletResponse) response;
             httpResponse.setStatus(429);
             httpResponse.setContentType("application/json;charset=UTF-8");

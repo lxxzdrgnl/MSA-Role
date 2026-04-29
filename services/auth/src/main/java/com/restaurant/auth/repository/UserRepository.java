@@ -41,8 +41,9 @@ public class UserRepository {
     }
 
     public User save(User user) {
-        jdbc.update("INSERT INTO users (email, password, nickname, role) VALUES (?, ?, ?, ?)",
-                user.getEmail(), user.getPassword(), user.getNickname(), user.getRole());
+        jdbc.update("INSERT INTO users (email, password, nickname, role, created_at) VALUES (?, ?, ?, ?, ?)",
+                user.getEmail(), user.getPassword(), user.getNickname(), user.getRole(),
+                java.time.LocalDateTime.now().toString());
         Long id = jdbc.queryForObject("SELECT last_insert_rowid()", Long.class);
         user.setId(id);
         return user;

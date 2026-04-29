@@ -133,13 +133,14 @@ public class MenuRepository {
     }
 
     public void update(Menu menu) {
+        String now = LocalDateTime.now().toString();
         jdbcTemplate.update(
             "UPDATE menus SET category_id = ?, name = ?, description = ?, price = ?, image_url = ?, " +
-            "tags = ?, allergens = ?, spicy_level = ?, cook_time_minutes = ?, updated_at = CURRENT_TIMESTAMP " +
+            "tags = ?, allergens = ?, spicy_level = ?, cook_time_minutes = ?, updated_at = ? " +
             "WHERE id = ?",
             menu.getCategoryId(), menu.getName(), menu.getDescription(), menu.getPrice(),
             menu.getImageUrl(), menu.getTags(), menu.getAllergens(),
-            menu.getSpicyLevel(), menu.getCookTimeMinutes(), menu.getId()
+            menu.getSpicyLevel(), menu.getCookTimeMinutes(), now, menu.getId()
         );
     }
 
@@ -150,12 +151,12 @@ public class MenuRepository {
     public void toggleSoldOut(Long id) {
         jdbcTemplate.update(
             "UPDATE menus SET is_sold_out = CASE WHEN is_sold_out = 0 THEN 1 ELSE 0 END, " +
-            "updated_at = CURRENT_TIMESTAMP WHERE id = ?", id);
+            "updated_at = ? WHERE id = ?", LocalDateTime.now().toString(), id);
     }
 
     public void updateBestFlag(Long id, boolean isBest) {
         jdbcTemplate.update(
-            "UPDATE menus SET is_best = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-            isBest ? 1 : 0, id);
+            "UPDATE menus SET is_best = ?, updated_at = ? WHERE id = ?",
+            isBest ? 1 : 0, LocalDateTime.now().toString(), id);
     }
 }
